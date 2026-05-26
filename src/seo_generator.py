@@ -89,11 +89,160 @@ def generate_seo_metadata(filename):
         return generate_fallback_metadata(filename)
 
 def generate_fallback_metadata(filename):
-    topic = clean_filename(filename).title()
+    import hashlib
+    
+    def get_deterministic_choice(fn, lst):
+        h = int(hashlib.md5(fn.encode('utf-8')).hexdigest(), 16)
+        return lst[h % len(lst)]
+        
+    topic = clean_filename(filename)
+    topic_title = topic.title()
+    
+    # Extract lowercase words for keyword matching
+    words = [w.lower() for w in re.findall(r'\w+', topic) if len(w) > 2]
+    
+    # Define stopwords
+    stopwords = {
+        'the', 'and', 'for', 'you', 'with', 'from', 'this', 'that', 'with',
+        'are', 'was', 'were', 'has', 'have', 'had', 'its', 'their', 'our',
+        'your', 'his', 'her', 'she', 'him', 'them', 'who', 'whom', 'which'
+    }
+    
+    keywords = [w for w in words if w not in stopwords]
+    
+    # Classify category
+    wildlife_keywords = {
+        'tiger', 'lion', 'leopard', 'cheetah', 'gorilla', 'elephant', 'shark', 'whale',
+        'bear', 'eagle', 'hawk', 'snake', 'hunt', 'predator', 'safari', 'animal', 'wolf',
+        'panther', 'jaguar', 'buffalo', 'crocodile', 'alligator'
+    }
+    
+    nature_keywords = {
+        'nature', 'forest', 'jungle', 'ocean', 'river', 'mountain', 'sea', 'sky',
+        'rain', 'storm', 'scenic', 'landscape', 'valley', 'desert', 'beach', 'sunset',
+        'sunrise', 'lake', 'waterfall', 'canyon'
+    }
+    
+    is_wildlife = any(k in wildlife_keywords for k in keywords)
+    is_nature = any(k in nature_keywords for k in keywords)
+    
+    # Pre-saved SEO Patterns (Titles & Descriptions)
+    if is_wildlife:
+        titles = [
+            "Wait for it... {topic} in full action! 😱",
+            "The raw power of {topic} is unreal! 🦁",
+            "POV: Witnessing {topic} up close. 🤯",
+            "Nature's ultimate predator: {topic}! 🔥",
+            "This {topic} footage will leave you speechless! 🚨"
+        ]
+        descriptions = [
+            "Witness the raw power, beauty, and survival instincts of {topic} in the wild. Nature never fails to amaze! 🌍",
+            "Up close and personal with {topic}! An extraordinary glimpse into one of the wild's finest. 🐾",
+            "Just when you think you've seen it all, this incredible moment of {topic} happens. Absolute wonder! 😱"
+        ]
+        cat_tags = ['#wildlife', '#nature', '#animals', '#safari', '#predator', '#wildlifephotography', '#naturelovers', '#wild']
+    elif is_nature:
+        titles = [
+            "Breathtaking views of {topic}! 🏔️",
+            "The absolute beauty of {topic}. ✨",
+            "Nature at its finest: {topic}! 🌍",
+            "Escape into this stunning {topic} scene. 🌿",
+            "This {topic} view is absolutely unreal! 😍"
+        ]
+        descriptions = [
+            "Take a deep breath and appreciate the stunning landscape and peaceful vibes of {topic}. 🍃",
+            "Breathtaking views of {topic} that will make you want to pack your bags and travel. Pure serenity! ✨",
+            "Nature is the ultimate artist, and {topic} is a true masterpiece. Simply awe-inspiring! 🌍"
+        ]
+        cat_tags = ['#nature', '#scenic', '#beautifulplaces', '#landscape', '#peaceful', '#earth', '#travel', '#exploring']
+    else:
+        titles = [
+            "You won't believe this {topic}! 😱",
+            "Wait for the end... {topic}! 🚨",
+            "This {topic} video is absolutely insane! 🤯",
+            "Watch this: {topic}! 🎬",
+            "This {topic} clip changes everything... 🔥"
+        ]
+        descriptions = [
+            "This footage of {topic} is taking over the internet! Absolutely mind-blowing to watch. 💥",
+            "Just when you think you've seen it all, {topic} comes along. Check out this must-watch video! 👇",
+            "Breathtaking vertical reel of {topic}! Share this with someone who needs to see it."
+        ]
+        cat_tags = ['#viral', '#trending', '#mustwatch', '#dailyreels', '#explorepage', '#popular']
+        
+    # Get deterministic choices based on filename to keep output consistent per video
+    title_template = get_deterministic_choice(filename, titles)
+    desc_template = get_deterministic_choice(filename, descriptions)
+    
+    # Generate Title & Base Description
+    title = title_template.format(topic=topic_title)
+    # Ensure title length limit
+    if len(title) > 60:
+        title = title[:57] + "..."
+        
+    base_desc = desc_template.format(topic=topic_title)
+    
+    # Basic CTAs
+    ctas = [
+        "Double tap if you love this! ❤️",
+        "Follow us for more daily wild reels! 📲",
+        "Tag a friend who needs to see this! 👇",
+        "What are your thoughts on this? Comment below! 💬",
+        "Share this with someone who would love it! ✈️"
+    ]
+    cta = get_deterministic_choice(filename + "_cta", ctas)
+    description = f"{base_desc}\n\n{cta}"
+    
+    # Keywords Database mapping
+    KEYWORDS_DATABASE = {
+        'tiger': ['bigcats', 'panthera', 'predator', 'savethe-tigers'],
+        'lion': ['kingofjungle', 'bigcats', 'wildlions', 'pride'],
+        'leopard': ['spottedcats', 'ghostsoftheforest', 'climbing'],
+        'cheetah': ['fastestanimal', 'speed', 'savannah'],
+        'elephant': ['gentlegiants', 'elephants', 'conservation'],
+        'shark': ['oceanlife', 'predators', 'underwater', 'deepblue'],
+        'whale': ['oceanlife', 'marinebiology', 'gentlegiants'],
+        'gorilla': ['primates', 'apes', 'silverback'],
+        'eagle': ['birds', 'raptor', 'flying'],
+        'hunt': ['predatorandprey', 'survival', 'naturein-action'],
+        'jungle': ['rainforest', 'tropical', 'wildnature'],
+        'mountain': ['climbing', 'hiking', 'alpine', 'peak'],
+        'ocean': ['marine', 'sea', 'underwaterworld'],
+    }
+    
+    # Build Hashtags list
+    # 1. Start with fundamental tags
+    hash_tags_set = {'#reels', '#viral', '#trending'}
+    
+    # 2. Add category tags
+    for tag in cat_tags:
+        hash_tags_set.add(tag.lower())
+        
+    # 3. Add tags from clean keywords database
+    for k in keywords:
+        if k in KEYWORDS_DATABASE:
+            for extra in KEYWORDS_DATABASE[k]:
+                hash_tags_set.add(f"#{extra}")
+                
+    # 4. Add keywords as tags themselves
+    for k in keywords:
+        if len(k) > 2:
+            hash_tags_set.add(f"#{k}")
+            
+    # Convert set back to list, ensure we don't have duplicates, and limit to ~8-10 tags
+    ordered_tags = ['#reels', '#viral', '#trending']
+    for tag in sorted(hash_tags_set):
+        if tag not in ordered_tags:
+            ordered_tags.append(tag)
+            
+    # Slice to a max of 10 hashtags to avoid tag stuffing
+    final_tags = ordered_tags[:10]
+    hashtags_str = " ".join(final_tags)
+    
     return {
-        'title': f"{topic} 🔥",
-        'description': f"Check out this amazing video! #Reels #Viral #{topic.replace(' ', '')}",
-        'hashtags': f"#Reels #Viral #Trending #{topic.replace(' ', '')}"
+        'title': title,
+        'description': description,
+        'hashtags': hashtags_str
     }
 
 def format_caption(seo_metadata):
