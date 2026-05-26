@@ -40,6 +40,8 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_BASE_URL: ${{ secrets.OPENAI_API_BASE_URL }}
+          OPENAI_API_MODEL: ${{ secrets.OPENAI_API_MODEL }}
           GOOGLE_APPLICATION_CREDENTIALS: service-account.json
         run: python src/scheduler.py
         
