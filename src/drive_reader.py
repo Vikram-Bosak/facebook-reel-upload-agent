@@ -130,21 +130,45 @@ def count_pending_videos():
 def get_daily_upload_count_from_drive(service, root_folder_id):
     """
     Counts the number of files in the 'Uploaded' folder in Google Drive
-    created today (UTC).
+    created today in US Eastern Time.
     """
     from datetime import datetime, timezone
+    from zoneinfo import ZoneInfo
     try:
         uploaded_id = get_folder_id(service, root_folder_id, 'Uploaded')
         
-        # Start of today (UTC)
-        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+        # Get start of today in US Eastern Time
+        est_now = datetime.now(ZoneInfo('America/New_York'))
+        est_today_start = est_now.replace(hour=0, minute=0, second=0, microsecond=0)
         
-        query = f"'{uploaded_id}' in parents and createdTime >= '{today_start}' and trashed=false"
+        # Convert to UTC for Google Drive API query format
+        utc_today_start = est_today_start.astimezone(timezone.utc)
+        
+        query = f"'{uploaded_id}' in parents and createdTime >= '{utc_today_start.isoformat()}' and trashed=false"
         results = service.files().list(q=query, fields="files(id)").execute()
         return len(results.get('files', []))
     except Exception as e:
         logger.error(f"Failed to count daily uploads from Drive: {e}")
         return 0
+
+def has_already_uploaded_in_slot(service, root_folder_id, est_now):
+    """
+    Checks if a video was already uploaded to Google Drive during the current slot hour.
+    """
+    from datetime import datetime, timezone
+    try:
+        uploaded_id = get_folder_id(service, root_folder_id, 'Uploaded')
+        
+        # Start of the current hour in UTC
+        now_utc = datetime.utcnow()
+        current_hour_start_utc = now_utc.replace(minute=0, second=0, microsecond=0)
+        
+        query = f"'{uploaded_id}' in parents and createdTime >= '{current_hour_start_utc.isoformat() + 'Z'}' and trashed=false"
+        results = service.files().list(q=query, fields="files(id)").execute()
+        return len(results.get('files', [])) > 0
+    except Exception as e:
+        logger.error(f"Failed to check slot upload status: {e}")
+        return True # Default to True on error to prevent double-posting
 
 def download_db(service, root_folder_id):
     """
