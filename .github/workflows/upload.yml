@@ -1,0 +1,50 @@
+name: AI Facebook Reel Upload
+
+on:
+  schedule:
+    # Runs every 4 hours
+    - cron: '0 */4 * * *'
+  workflow_dispatch: # Allows manual trigger from UI
+
+jobs:
+  upload_reel:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install system dependencies (FFmpeg)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+        
+      - name: Setup Google Drive Service Account
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "$GOOGLE_SERVICE_ACCOUNT_JSON" > service-account.json
+          
+      - name: Run Upload Scheduler
+        env:
+          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GOOGLE_APPLICATION_CREDENTIALS: service-account.json
+        run: python src/scheduler.py
+        
+      # Optional: Persist the database state across runs using actions/cache or pushing it to a separate branch.
+      # Since GitHub Actions runners are ephemeral, the SQLite DB will reset every run.
+      # To keep it persistent, you might want to use a cloud DB (e.g., Supabase, Firebase) or commit the DB back.
+      # For now, it will track state only during the current run, which means the "Duplicate Check" by filename/hash
+      # will still work because files are moved out of "Pending" to "Uploaded"/"Failed".

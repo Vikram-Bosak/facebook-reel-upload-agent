@@ -1,0 +1,20 @@
+# Environments
+.env
+service-account.json
+
+# Databases
+database/*.db
+
+# Logs & temp files
+logs/*.log
+temp/
+
+# Python cache & build files
+__pycache__/
+*.pyc
+venv/
+.pytest_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
