@@ -24,6 +24,14 @@ def init_db():
             file_hash TEXT UNIQUE
         )
     ''')
+    
+    # Run migration to add attempts column if it doesn't exist
+    try:
+        cursor.execute('ALTER TABLE reels ADD COLUMN attempts INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
+        
     conn.commit()
     conn.close()
 
@@ -32,21 +40,26 @@ def is_duplicate(filename, file_hash=None):
     cursor = conn.cursor()
     
     if file_hash:
-        cursor.execute('SELECT 1 FROM reels WHERE filename = ? OR file_hash = ?', (filename, file_hash))
+        cursor.execute('SELECT status FROM reels WHERE filename = ? OR file_hash = ?', (filename, file_hash))
     else:
-        cursor.execute('SELECT 1 FROM reels WHERE filename = ?', (filename,))
+        cursor.execute('SELECT status FROM reels WHERE filename = ?', (filename,))
         
-    result = cursor.fetchone()
+    rows = cursor.fetchall()
     conn.close()
-    return result is not None
+    
+    for row in rows:
+        status = row[0]
+        if status in ('uploaded', 'failed'):
+            return True
+    return False
 
 def insert_reel(filename, file_hash=None):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     try:
         cursor.execute('''
-            INSERT INTO reels (filename, file_hash, status)
-            VALUES (?, ?, 'pending')
+            INSERT INTO reels (filename, file_hash, status, attempts)
+            VALUES (?, ?, 'pending', 0)
         ''', (filename, file_hash))
         conn.commit()
         return cursor.lastrowid
@@ -71,7 +84,7 @@ def mark_reel_uploaded(filename, facebook_url):
     cursor = conn.cursor()
     cursor.execute('''
         UPDATE reels 
-        SET status = 'uploaded', facebook_url = ?, upload_time = ?
+        SET status = 'uploaded', facebook_url = ?, upload_time = ?, attempts = 0
         WHERE filename = ?
     ''', (facebook_url, datetime.now().isoformat(), filename))
     conn.commit()
@@ -99,5 +112,40 @@ def get_daily_upload_count():
     count = cursor.fetchone()[0]
     conn.close()
     return count
+
+def get_reel_status(filename, file_hash=None):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    if file_hash:
+        cursor.execute('SELECT status, attempts FROM reels WHERE filename = ? OR file_hash = ?', (filename, file_hash))
+    else:
+        cursor.execute('SELECT status, attempts FROM reels WHERE filename = ?', (filename,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return row[0], row[1]
+    return None, 0
+
+def increment_attempts(filename):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE reels 
+        SET attempts = attempts + 1
+        WHERE filename = ?
+    ''', (filename,))
+    cursor.execute('SELECT attempts FROM reels WHERE filename = ?', (filename,))
+    result = cursor.fetchone()
+    attempts = result[0] if result else 0
+    conn.commit()
+    conn.close()
+    return attempts
+
+def reset_attempts(filename):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE reels SET attempts = 0 WHERE filename = ?', (filename,))
+    conn.commit()
+    conn.close()
 
 init_db()

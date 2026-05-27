@@ -3,19 +3,23 @@ import hashlib
 import ffmpeg
 import time
 try:
-    from .database import is_duplicate, insert_reel, update_reel_metadata, mark_reel_uploaded, mark_reel_failed
+    from .database import is_duplicate, insert_reel, update_reel_metadata, mark_reel_uploaded, mark_reel_failed, get_reel_status, increment_attempts, reset_attempts
     from .seo_generator import generate_seo_metadata, format_caption
     from .facebook_uploader import upload_reel
     from .telegram_reporter import report_success, report_failure
     from .drive_reader import get_next_video, move_file, count_pending_videos
     from .logger import logger
 except ImportError:
-    from database import is_duplicate, insert_reel, update_reel_metadata, mark_reel_uploaded, mark_reel_failed
+    from database import is_duplicate, insert_reel, update_reel_metadata, mark_reel_uploaded, mark_reel_failed, get_reel_status, increment_attempts, reset_attempts
     from seo_generator import generate_seo_metadata, format_caption
     from facebook_uploader import upload_reel
     from telegram_reporter import report_success, report_failure
     from drive_reader import get_next_video, move_file, count_pending_videos
     from logger import logger
+
+class PermanentValidationError(Exception):
+    """Exception raised for errors that cannot be resolved via retries (e.g. corrupt files, duplicates)."""
+    pass
 
 def get_file_hash(filepath):
     """Calculates MD5 hash of the file to prevent exact duplicates."""
@@ -65,7 +69,7 @@ def validate_video(filepath):
         return False, f"Error validating video: {e}"
 
 def process_next_video():
-    """Main workflow to process one video from the queue."""
+    """Main workflow to process one video from the queue with robust retry/validation logic."""
     video_info = get_next_video()
     if not video_info:
         logger.info("No pending videos found in Google Drive.")
@@ -83,17 +87,27 @@ def process_next_video():
     try:
         # Duplicate Check
         file_hash = get_file_hash(filepath)
-        if is_duplicate(filename, file_hash):
-            raise Exception("Duplicate file detected based on filename or hash.")
+        db_status, db_attempts = get_reel_status(filename, file_hash)
+        
+        if db_status == 'uploaded':
+            raise PermanentValidationError("Duplicate file detected: Video already successfully uploaded.")
+        elif db_status == 'failed':
+            raise PermanentValidationError("Duplicate file detected: Video has already failed permanently.")
+        elif db_status == 'pending':
+            if db_attempts >= 3:
+                raise PermanentValidationError(f"Video has already failed after {db_attempts} attempts.")
+            else:
+                logger.info(f"Video {filename} is in pending status (attempt {db_attempts + 1}/3). Retrying...")
             
         # Video Validation
         is_valid, msg = validate_video(filepath)
         if not is_valid:
-            raise Exception(f"Video validation failed: {msg}")
+            raise PermanentValidationError(f"Video validation failed: {msg}")
             
         # Database tracking (prevent parallel processing)
-        if not insert_reel(filename, file_hash):
-            raise Exception("Failed to lock file in database. Might be processing already.")
+        if db_status is None:
+            if not insert_reel(filename, file_hash):
+                raise PermanentValidationError("Failed to lock file in database. Might be processing already.")
             
         # AI SEO Generation
         logger.info("Generating SEO metadata via OpenAI...")
@@ -127,18 +141,41 @@ def process_next_video():
         move_file(service, file_id, video_info['pending_id'], video_info['uploaded_id'])
         logger.info("Process completed successfully. Video uploaded and moved to 'Uploaded' folder.")
         
-    except Exception as e:
-        # Failure Handling
-        logger.error(f"Error processing video: {e}")
+    except PermanentValidationError as e:
+        # Failure Handling for permanent/validation errors
+        logger.error(f"Permanent validation error processing video: {e}")
         mark_reel_failed(filename)
         report_failure(filename, str(e), remaining_queue)
         
-        # Move file in Drive to Failed
+        # Move file in Drive to Failed immediately
         try:
             move_file(service, file_id, video_info['pending_id'], video_info['failed_id'])
-            logger.info("Video moved to 'Failed' folder in Google Drive.")
+            logger.info("Video moved to 'Failed' folder in Google Drive due to validation error.")
         except Exception as move_err:
             logger.error(f"Also failed to move file in Drive: {move_err}")
+            
+    except Exception as e:
+        # Failure Handling for transient/network/API errors
+        logger.error(f"Transient error processing video: {e}")
+        
+        # Increment attempt counter
+        attempts = increment_attempts(filename)
+        if attempts >= 3:
+            logger.error(f"Max attempts (3) reached for video {filename}. Marking as failed permanently.")
+            mark_reel_failed(filename)
+            report_failure(filename, f"Upload failed after 3 attempts: {e}", remaining_queue)
+            
+            # Move file in Drive to Failed
+            try:
+                move_file(service, file_id, video_info['pending_id'], video_info['failed_id'])
+                logger.info("Video moved to 'Failed' folder in Google Drive.")
+            except Exception as move_err:
+                logger.error(f"Also failed to move file in Drive: {move_err}")
+        else:
+            # Keep the file in the Pending folder so the scheduler retries it next run
+            warn_msg = f"Upload failed (attempt {attempts}/3): {e}. Remaining in pending for retry."
+            logger.warning(warn_msg)
+            report_failure(filename, warn_msg, remaining_queue)
             
     finally:
         # Cleanup temp file

@@ -262,3 +262,18 @@ def upload_db(service, root_folder_id, db_file_id=None):
     except Exception as e:
         logger.error(f"Failed to upload database to Google Drive: {e}")
         return db_file_id
+
+def has_uploaded_since_datetime(service, root_folder_id, start_dt_utc):
+    """
+    Checks if any video was uploaded to the 'Uploaded' folder in Google Drive 
+    at or after the specified UTC datetime.
+    """
+    try:
+        uploaded_id = get_folder_id(service, root_folder_id, 'Uploaded')
+        query = f"'{uploaded_id}' in parents and createdTime >= '{start_dt_utc.isoformat()}' and trashed=false"
+        results = service.files().list(q=query, fields="files(id)").execute()
+        return len(results.get('files', [])) > 0
+    except Exception as e:
+        logger.error(f"Failed to check upload status since {start_dt_utc}: {e}")
+        return True # Default to True on error to prevent double-posting
+
