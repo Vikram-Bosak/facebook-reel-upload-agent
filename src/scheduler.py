@@ -1,6 +1,7 @@
 import os
 import sys
 import argparse
+from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
 from datetime import datetime, timezone, timedelta
 
