@@ -28,10 +28,37 @@ def get_page_access_token(user_token, page_id):
                     return page.get('access_token')
             logger.warning(f"Target Page ID {page_id} not found in user accounts. Falling back to provided token.")
         else:
+            try:
+                err_data = response.json()
+                err_msg = err_data.get('error', {}).get('message')
+                if err_msg:
+                    logger.warning(f"Failed to query /me/accounts (status {response.status_code}): {err_msg}. Falling back to provided token.")
+                    return user_token
+            except Exception:
+                pass
             logger.warning(f"Failed to query /me/accounts (status {response.status_code}). Falling back to provided token.")
     except Exception as e:
         logger.error(f"Error resolving Page Access Token: {e}. Falling back to provided token.")
     return user_token
+
+def _handle_api_error(response, step_name):
+    """
+    Checks the response status. If it's an error, attempts to parse
+    the Facebook JSON error details and raises a descriptive Exception.
+    """
+    if response.status_code >= 400:
+        try:
+            err_data = response.json()
+            error_info = err_data.get('error', {})
+            err_msg = error_info.get('message')
+            err_code = error_info.get('code', 'unknown')
+            err_subcode = error_info.get('error_subcode', 'unknown')
+            if err_msg:
+                raise Exception(f"Facebook API Error ({step_name}): {err_msg} (code: {err_code}, subcode: {err_subcode})")
+        except Exception as e:
+            if "Facebook API Error" in str(e):
+                raise
+        response.raise_for_status()
 
 def upload_reel(video_path, caption):
     """
@@ -56,7 +83,7 @@ def upload_reel(video_path, caption):
     }
     
     init_response = requests.post(init_url, data=init_payload)
-    init_response.raise_for_status()
+    _handle_api_error(init_response, "Initialize Upload")
     init_data = init_response.json()
     
     video_id = init_data.get('video_id')
@@ -76,7 +103,7 @@ def upload_reel(video_path, caption):
         video_data = f.read()
         
     upload_response = requests.post(upload_url, headers=headers, data=video_data)
-    upload_response.raise_for_status()
+    _handle_api_error(upload_response, "Upload Video Data")
     
     # Step 3: Publish Video
     publish_url = f"https://graph.facebook.com/v19.0/{page_id}/video_reels"
@@ -89,7 +116,7 @@ def upload_reel(video_path, caption):
     }
     
     publish_response = requests.post(publish_url, data=publish_payload)
-    publish_response.raise_for_status()
+    _handle_api_error(publish_response, "Publish Video")
     publish_data = publish_response.json()
     
     if publish_data.get('success'):
@@ -99,3 +126,4 @@ def upload_reel(video_path, caption):
         return f"https://www.facebook.com/{page_id}/videos/{video_id}"
     else:
         raise Exception(f"Failed to publish reel: {publish_data}")
+
