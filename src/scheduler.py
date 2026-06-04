@@ -37,7 +37,7 @@ def get_latest_scheduled_slot_time(est_now):
 def validate_env():
     """Validates that all required environment variables are present and correct."""
     required = {
-        'FB_ACCESS_TOKEN': "Facebook Page Access Token is required to post Reels.",
+        'FB_STATE_JSON': "Facebook Playwright State JSON is required to authenticate.",
         'FB_PAGE_ID': "Facebook Page ID is required to target the correct page.",
         'GOOGLE_DRIVE_FOLDER_ID': "Google Drive Folder ID is required to read/write videos and database.",
     }
@@ -94,9 +94,9 @@ def main():
         sys.exit(1)
 
     # Run active health checks before checking files or scheduling
-    access_token = os.environ.get('FB_ACCESS_TOKEN')
+    fb_state = os.environ.get('FB_STATE_JSON')
     page_id = os.environ.get('FB_PAGE_ID')
-    is_healthy, health_results = run_all_health_checks(access_token, page_id)
+    is_healthy, health_results = run_all_health_checks(fb_state, page_id)
     if not is_healthy:
         logger.error(f"System health check failed. Aborting cycle. Results: {health_results}")
         update_heartbeat("unhealthy", health_results)
