@@ -123,7 +123,7 @@ def process_next_video():
         
         for attempt in range(max_retries):
             try:
-                fb_url = upload_reel(filepath, caption)
+                fb_url = upload_reel(filepath, caption, title=seo.get('title'))
                 break
             except Exception as e:
                 if attempt < max_retries - 1:

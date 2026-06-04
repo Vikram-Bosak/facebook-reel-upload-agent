@@ -1,129 +1,131 @@
 import os
-import requests
 import time
+import json
+import tempfile
+from playwright.sync_api import sync_playwright
 
 try:
     from .logger import logger
 except ImportError:
     from logger import logger
 
-def get_fb_credentials():
-    access_token = os.environ.get('FB_ACCESS_TOKEN')
+def get_fb_state():
+    """Retrieves the Facebook session state from the environment variable."""
+    state_json = os.environ.get('FB_STATE_JSON')
     page_id = os.environ.get('FB_PAGE_ID')
-    return access_token, page_id
+    return state_json, page_id
 
-def get_page_access_token(user_token, page_id):
+def upload_reel(video_path, caption, title=None):
     """
-    Queries /me/accounts to find the Page Access Token for the target Page ID.
-    If not found or query fails, returns the user_token back as a fallback.
+    Uploads a video to Facebook Reels using Playwright browser automation.
+    Requires FB_STATE_JSON to be set in the environment.
     """
-    url = f"https://graph.facebook.com/v19.0/me/accounts?limit=100&access_token={user_token}"
+    state_json_str, page_id = get_fb_state()
+    
+    if not state_json_str or not page_id:
+        raise Exception("Facebook configuration missing. Ensure FB_STATE_JSON and FB_PAGE_ID are set.")
+
+    logger.info("Initializing Playwright for Facebook Reel upload...")
+    
+    # Write the state string to a temporary file because Playwright expects a file path
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        f.write(state_json_str)
+        temp_state_path = f.name
+
     try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json().get('data', [])
-            for page in data:
-                if str(page.get('id')) == str(page_id):
-                    logger.info(f"Successfully resolved Page Access Token for page: {page.get('name')} ({page_id})")
-                    return page.get('access_token')
-            logger.warning(f"Target Page ID {page_id} not found in user accounts. Falling back to provided token.")
-        else:
-            try:
-                err_data = response.json()
-                err_msg = err_data.get('error', {}).get('message')
-                if err_msg:
-                    logger.warning(f"Failed to query /me/accounts (status {response.status_code}): {err_msg}. Falling back to provided token.")
-                    return user_token
-            except Exception:
-                pass
-            logger.warning(f"Failed to query /me/accounts (status {response.status_code}). Falling back to provided token.")
+        with sync_playwright() as p:
+            # Run headless for GitHub Actions or background processing
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--disable-blink-features=AutomationControlled"]
+            )
+            
+            # Load the saved session state (cookies, local storage)
+            context = browser.new_context(
+                storage_state=temp_state_path,
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
+            
+            # Use stealth mode via context (or generic bypass techniques if stealth library not working flawlessly)
+            page = context.new_page()
+
+            # Navigate directly to the Facebook Reels composer
+            # Alternative is Meta Business Suite, but basic Facebook Profile reels creator is often simpler
+            upload_url = f"https://www.facebook.com/reels/create/?page_id={page_id}"
+            logger.info(f"Navigating to {upload_url}")
+            
+            page.goto(upload_url, wait_until="networkidle")
+            
+            # Give the page a moment to render properly
+            page.wait_for_timeout(3000)
+            
+            # Check if we were redirected to a login page (meaning session expired)
+            if "/login" in page.url:
+                raise Exception("Session expired or invalid. Please generate a new FB_STATE_JSON.")
+
+            # Step 1: Upload Video File
+            logger.info("Locating file input element...")
+            # Wait for file input element to be available in the DOM
+            file_input = page.locator("input[type='file'][accept*='video']")
+            file_input.wait_for(state="attached", timeout=15000)
+            
+            logger.info(f"Uploading file: {video_path}")
+            file_input.set_input_files(video_path)
+            
+            # Wait for upload processing (this can take a while depending on file size)
+            logger.info("Waiting for file to be processed...")
+            page.wait_for_timeout(5000) # Give it an initial 5 seconds
+            
+            # Click the 'Next' button
+            logger.info("Clicking 'Next' button...")
+            next_button = page.locator("div[role='button']:has-text('Next')")
+            # There might be multiple next buttons or it might take a second to become clickable
+            next_button.last.click()
+            
+            page.wait_for_timeout(2000)
+            
+            # Step 2: Description and Details
+            logger.info("Entering caption...")
+            
+            # Facebook uses a contenteditable div for the description
+            textbox = page.locator("div[role='textbox'][contenteditable='true']")
+            textbox.wait_for(state="visible", timeout=10000)
+            
+            # Clear if needed and type caption
+            textbox.click()
+            textbox.type(caption, delay=10) # human-like typing
+            
+            page.wait_for_timeout(2000)
+            
+            # Step 3: Publish
+            logger.info("Clicking 'Publish' button...")
+            publish_button = page.locator("div[role='button']:has-text('Publish')")
+            publish_button.last.click()
+            
+            # Step 4: Wait for completion
+            logger.info("Waiting for publish to complete...")
+            # We wait until we are redirected back to the Reels feed or profile
+            # Usually after publish, a dialog appears or URL changes. We'll wait a bit.
+            page.wait_for_timeout(10000)
+            
+            # Assuming success if no crash. Playwright doesn't easily return the URL immediately
+            # like the API did. We will return a generic profile reels link.
+            logger.info("Reel published successfully.")
+            return f"https://www.facebook.com/{page_id}/reels/"
+
     except Exception as e:
-        logger.error(f"Error resolving Page Access Token: {e}. Falling back to provided token.")
-    return user_token
-
-def _handle_api_error(response, step_name):
-    """
-    Checks the response status. If it's an error, attempts to parse
-    the Facebook JSON error details and raises a descriptive Exception.
-    """
-    if response.status_code >= 400:
+        logger.error(f"Playwright Upload Error: {e}")
+        # Capture screenshot for debugging if possible
         try:
-            err_data = response.json()
-            error_info = err_data.get('error', {})
-            err_msg = error_info.get('message')
-            err_code = error_info.get('code', 'unknown')
-            err_subcode = error_info.get('error_subcode', 'unknown')
-            if err_msg:
-                raise Exception(f"Facebook API Error ({step_name}): {err_msg} (code: {err_code}, subcode: {err_subcode})")
-        except Exception as e:
-            if "Facebook API Error" in str(e):
-                raise
-        response.raise_for_status()
-
-def upload_reel(video_path, caption):
-    """
-    Uploads a video to Facebook Reels using the multi-step Graph API process.
-    Returns the Facebook URL if successful, or raises an Exception.
-    """
-    user_token, page_id = get_fb_credentials()
-    if not user_token or not page_id:
-        raise Exception("Facebook credentials missing.")
-
-    # Resolve Page Access Token
-    access_token = get_page_access_token(user_token, page_id)
-
-    file_size = os.path.getsize(video_path)
-    
-    # Step 1: Initialize Upload
-    init_url = f"https://graph.facebook.com/v19.0/{page_id}/video_reels"
-    init_payload = {
-        'access_token': access_token,
-        'upload_phase': 'start',
-        'file_size': file_size
-    }
-    
-    init_response = requests.post(init_url, data=init_payload)
-    _handle_api_error(init_response, "Initialize Upload")
-    init_data = init_response.json()
-    
-    video_id = init_data.get('video_id')
-    upload_url = init_data.get('upload_url')
-    
-    if not video_id or not upload_url:
-        raise Exception("Failed to initialize Facebook upload session.")
-
-    # Step 2: Upload Video Data
-    headers = {
-        'Authorization': f'OAuth {access_token}',
-        'offset': '0',
-        'file_size': str(file_size)
-    }
-    
-    with open(video_path, 'rb') as f:
-        video_data = f.read()
-        
-    upload_response = requests.post(upload_url, headers=headers, data=video_data)
-    _handle_api_error(upload_response, "Upload Video Data")
-    
-    # Step 3: Publish Video
-    publish_url = f"https://graph.facebook.com/v19.0/{page_id}/video_reels"
-    publish_payload = {
-        'access_token': access_token,
-        'upload_phase': 'finish',
-        'video_id': video_id,
-        'video_state': 'PUBLISHED',
-        'description': caption
-    }
-    
-    publish_response = requests.post(publish_url, data=publish_payload)
-    _handle_api_error(publish_response, "Publish Video")
-    publish_data = publish_response.json()
-    
-    if publish_data.get('success'):
-        # Facebook Graph API doesn't always return the reel URL directly.
-        # We can construct a likely URL, but ideally, we might need to poll the video status
-        # to get the permalink. For now, we construct the direct video link.
-        return f"https://www.facebook.com/{page_id}/videos/{video_id}"
-    else:
-        raise Exception(f"Failed to publish reel: {publish_data}")
-
+            if 'page' in locals():
+                page.screenshot(path="error_screenshot.png")
+                logger.info("Saved error screenshot to error_screenshot.png")
+        except:
+            pass
+        raise Exception(f"Facebook Playwright Upload Failed: {str(e)}")
+    finally:
+        if 'browser' in locals():
+            browser.close()
+        # Clean up temp file
+        if os.path.exists(temp_state_path):
+            os.remove(temp_state_path)

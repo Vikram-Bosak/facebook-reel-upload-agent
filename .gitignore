@@ -1,6 +1,7 @@
 # Environments
 .env
 service-account.json
+state.json
 
 # Databases
 database/*.db
