@@ -20,20 +20,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-          cache: 'pip'
-
       - name: Install system dependencies (FFmpeg)
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg || echo "Skipping FFmpeg installation due to sudo restrictions"
 
-      - name: Install Python dependencies
-        run: pip install -r requirements.txt
+      - name: Setup Virtual Environment and Install Dependencies
+        run: |
+          python3 -m venv venv
+          venv/bin/pip install -r requirements.txt
         
       - name: Install Playwright Browsers
-        run: playwright install chromium --with-deps
+        run: venv/bin/playwright install chromium --with-deps
         
       - name: Setup Google Drive Service Account
         env:
@@ -53,4 +49,4 @@ jobs:
           OPENAI_API_MODEL: ${{ secrets.OPENAI_API_MODEL }}
           GOOGLE_APPLICATION_CREDENTIALS: service-account.json
           FORCE_UPLOAD: ${{ github.event.inputs.force }}
-        run: python src/scheduler.py
+        run: venv/bin/python src/scheduler.py
