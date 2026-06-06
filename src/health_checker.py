@@ -18,27 +18,37 @@ def check_internet(timeout=5):
     except Exception as e:
         return False, f"Internet connection check failed: {e}"
 
-def check_facebook_state(fb_state, page_id):
+def check_facebook_token(access_token, page_id):
     """
-    Verifies if the Facebook state JSON is present and valid JSON.
+    Verifies if the Facebook access token is valid and has access to the page.
     """
-    import json
-    
-    if not fb_state or not page_id:
-        return False, "Facebook credentials (FB_STATE_JSON or FB_PAGE_ID) are missing from configuration."
+    if not access_token or not page_id:
+        return False, "Facebook credentials (access token or page ID) are missing from configuration."
         
+    url = f"https://graph.facebook.com/v19.0/me?access_token={access_token}"
     try:
-        # Just verify it's valid JSON. We can't easily check if the session is still active
-        # without launching Playwright, which is too heavy for a simple health check.
-        state_data = json.loads(fb_state)
-        if 'cookies' in state_data:
-            return True, f"Facebook State JSON is valid. Ready for page: {page_id}"
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            accounts_url = f"https://graph.facebook.com/v19.0/me/accounts?limit=100&access_token={access_token}"
+            acc_resp = requests.get(accounts_url, timeout=10)
+            if acc_resp.status_code == 200:
+                pages = acc_resp.json().get('data', [])
+                for page in pages:
+                    if str(page.get('id')) == str(page_id):
+                        return True, f"Facebook API connection successful. Verified access to page: {page.get('name')} ({page_id})"
+                return False, f"Facebook API connection successful, but target Page ID {page_id} was not found in user accounts."
+            else:
+                return False, f"Facebook API reachable, but failed to query page accounts: {acc_resp.text}"
         else:
-            return False, "Facebook State JSON is missing 'cookies' array."
-    except json.JSONDecodeError:
-        return False, "FB_STATE_JSON is not a valid JSON string. Please regenerate it."
+            try:
+                err_data = response.json()
+                err_msg = err_data.get('error', {}).get('message', 'Unknown error')
+                err_code = err_data.get('error', {}).get('code', 'unknown')
+                return False, f"Facebook token validation failed: {err_msg} (code: {err_code})"
+            except Exception:
+                return False, f"Facebook token validation failed with status {response.status_code}: {response.text}"
     except Exception as e:
-        return False, f"Failed to validate Facebook State JSON: {e}"
+        return False, f"Failed to connect to Facebook API: {e}"
 
 def check_google_drive():
     """
@@ -61,7 +71,7 @@ def check_google_drive():
     except Exception as e:
         return False, f"Google Drive connection check failed: {e}"
 
-def run_all_health_checks(fb_state, page_id):
+def run_all_health_checks(access_token, page_id):
     """
     Runs all health checks and returns (is_healthy, status_results).
     """
@@ -88,7 +98,7 @@ def run_all_health_checks(fb_state, page_id):
         logger.info(f"Health Check Passed: {msg}")
         
     # Run Facebook check
-    ok, msg = check_facebook_state(fb_state, page_id)
+    ok, msg = check_facebook_token(access_token, page_id)
     results["Facebook"] = {"ok": ok, "message": msg}
     if not ok:
         is_healthy = False

@@ -5,5 +5,3 @@ requests
 openai
 ffmpeg-python
 python-dotenv
-playwright
-playwright-stealth
