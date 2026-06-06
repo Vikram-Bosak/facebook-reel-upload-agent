@@ -1,29 +1,333 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - Beast Planet</title>
+    <title>Privacy Policy - Beast Planet Automation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: auto; }
-        h1 { color: #333; }
-        h2 { color: #555; }
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --text-main: #1f2937;
+            --text-muted: #4b5563;
+            --bg-body: #f9fafb;
+            --bg-card: #ffffff;
+            --border-color: #e5e7eb;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.7;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            padding: 40px;
+        }
+
+        header {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 24px;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: var(--text-main);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .last-updated {
+            font-size: 14px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .lang-switch-btn {
+            display: inline-flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+            width: 100%;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+        }
+
+        .btn.active {
+            background: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+        }
+
+        .section {
+            margin-bottom: 32px;
+        }
+
+        h2 {
+            font-size: 18px;
+            color: var(--primary-dark);
+            margin-bottom: 12px;
+            font-weight: 600;
+            border-left: 4px solid var(--primary);
+            padding-left: 12px;
+        }
+
+        p {
+            margin-bottom: 16px;
+            font-size: 15px;
+            color: var(--text-muted);
+        }
+
+        ul {
+            margin-left: 24px;
+            margin-bottom: 16px;
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .highlight-box {
+            background-color: #f3f4f6;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #9ca3af;
+        }
+
+        .highlight-box p {
+            margin-bottom: 0;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        footer {
+            margin-top: 40px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .lang-section {
+            display: none;
+        }
+
+        .lang-section.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
-    <h1>गोपनीयता नीति (Privacy Policy)</h1>
-    <p>यह गोपनीयता नीति बताती है कि Beast Planet ऐप उपयोगकर्ताओं से कौन सी जानकारी एकत्र करता है और उसका उपयोग कैसे करता है।</p>
-    
-    <h2>1. जानकारी का संग्रह</h2>
-    <p>हम फेसबुक ग्राफ एपीआई के माध्यम से केवल आपके पेज की जानकारी और रील्स वीडियो कंटेंट तक पहुँचते हैं ताकि उन्हें आपकी ओर से अपलोड किया जा सके।</p>
-    
-    <h2>2. डेटा का उपयोग</h2>
-    <p>हम डेटा का उपयोग केवल रील्स पब्लिश करने के लिए करते हैं। हम आपका डेटा किसी तीसरे पक्ष के साथ साझा नहीं करते हैं।</p>
-    
-    <h2>3. डेटा विलोपन</h2>
-    <p>उपयोगकर्ता फेसबुक की "Apps and Websites" सेटिंग्स में जाकर कभी भी ऐप का एक्सेस हटा सकते हैं और अपना डेटा डिलीट कर सकते हैं।</p>
-    
-    <h2>संपर्क</h2>
-    <p>यदि आपके कोई प्रश्न हैं, तो कृपया हमसे संपर्क करें।</p>
+
+<div class="container">
+    <header>
+        <div class="logo">Beast Planet</div>
+        <h1>Privacy Policy</h1>
+        <div class="last-updated">Last Updated: June 6, 2026</div>
+    </header>
+
+    <div class="lang-switch-btn">
+        <button class="btn active" id="btn-en" onclick="switchLang('en')">English</button>
+        <button class="btn" id="btn-hi" onclick="switchLang('hi')">हिन्दी (Hindi)</button>
+    </div>
+
+    <!-- English Section -->
+    <div id="lang-en" class="lang-section active">
+        <div class="section">
+            <p>Welcome to Beast Planet's Privacy Policy. We respect your privacy and are committed to protecting any information processed through our systems. This privacy policy explains how our automation app collects, uses, and handles data in connection with the Facebook Graph API to manage content on your Facebook Page.</p>
+        </div>
+
+        <div class="section">
+            <h2>1. Use of Facebook Graph API & Permissions</h2>
+            <p>Our application uses the official Facebook Graph API to connect with your Facebook account. Specifically, our application requests access to the following permissions:</p>
+            <ul>
+                <li><strong>pages_manage_posts:</strong> Allows the application to create and publish Reels directly on your authorized Facebook Page.</li>
+                <li><strong>pages_read_engagement:</strong> Allows the application to check the status, engagement metrics, and status of published posts on your authorized Facebook Page.</li>
+            </ul>
+            <p>Our app only accesses the specific Facebook Pages for which you have explicitly granted permission during the authorization flow.</p>
+        </div>
+
+        <div class="section">
+            <h2>2. Purpose & Automated Upload System</h2>
+            <p>The sole purpose of this application is content publishing and Facebook Page management. It operates as an automated scheduling agent with the following details:</p>
+            <ul>
+                <li><strong>Function:</strong> It automates the fetching of video files from designated storage and publishes them as short vertical videos (Facebook Reels) on your Page.</li>
+                <li><strong>Upload Frequency Limit:</strong> The automation system is capped to publish a maximum of <strong>5 Reels per 24 hours</strong> to ensure natural posting velocity and compliance with platform limits.</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>3. Information Collection and Storage</h2>
+            <p>Our application maintains a strict minimal-data approach:</p>
+            <ul>
+                <li><strong>Personal Data:</strong> We do not collect, store, or process any personal identification information (PII) such as your email address, phone number, or password.</li>
+                <li><strong>Tokens and Page Details:</strong> Session access tokens (encrypted) and Facebook Page IDs are stored securely in our private environment to maintain the automation link.</li>
+                <li><strong>Reel Content:</strong> Temporary video files downloaded for publishing are deleted from our servers immediately after a successful upload or failure state is recorded.</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>4. Data Sharing and Transfer</h2>
+            <div class="highlight-box">
+                <p>We do not sell, rent, trade, or share any user data or access credentials with third parties for any purpose. All credentials and contents are exclusively used for publishing Reels to your own Facebook Page.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>5. Data Retention and Deletion</h2>
+            <p>We retain credentials only as long as necessary to run the automation loop. If you wish to revoke access and delete all connection data:</p>
+            <ol style="margin-left: 24px; margin-bottom: 16px; color: var(--text-muted); font-size: 15px;">
+                <li style="margin-bottom: 8px;">Go to your Facebook account's <strong>Settings & Privacy > Settings</strong>.</li>
+                <li style="margin-bottom: 8px;">Navigate to <strong>Apps and Websites</strong>.</li>
+                <li style="margin-bottom: 8px;">Find our application <strong>Beast Planet Automation</strong> and click <strong>Remove</strong>.</li>
+                <li style="margin-bottom: 8px;">Removing the app will instantly invalidate the access tokens and delete all integration state on our end.</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h2>6. Compliance & Policy Guidelines</h2>
+            <p>We are dedicated to adhering strictly to the Facebook Platform Policies, Graph API terms of service, and all applicable global privacy laws. We ensure that our automation behaves responsibly and respects the rate limits and terms established by Meta.</p>
+        </div>
+
+        <div class="section">
+            <h2>7. Contact and Support</h2>
+            <p>If you have any questions, feedback, or concerns regarding your privacy or data handling, please contact us via our Facebook Page:</p>
+            <p><a href="https://www.facebook.com/RealBeastPlanet" target="_blank">Facebook Page: Real Beast Planet</a></p>
+        </div>
+    </div>
+
+    <!-- Hindi Section -->
+    <div id="lang-hi" class="lang-section">
+        <div class="section">
+            <p>Beast Planet की गोपनीयता नीति (Privacy Policy) में आपका स्वागत है। हम आपकी गोपनीयता का सम्मान करते हैं और अपने सिस्टम के माध्यम से प्रोसेस की जाने वाली किसी भी जानकारी की सुरक्षा के लिए प्रतिबद्ध हैं। यह गोपनीयता नीति बताती है कि हमारा ऑटोमेशन ऐप आपके फेसबुक पेज पर कंटेंट को प्रबंधित करने के लिए फेसबुक ग्राफ एपीआई (Facebook Graph API) के संबंध में डेटा कैसे एकत्र, उपयोग और प्रबंधित करता है।</p>
+        </div>
+
+        <div class="section">
+            <h2>1. फेसबुक ग्राफ एपीआई और अनुमतियों का उपयोग</h2>
+            <p>हमारा एप्लिकेशन आपके फेसबुक अकाउंट से जुड़ने के लिए आधिकारिक फेसबुक ग्राफ एपीआई का उपयोग करता है। विशेष रूप से, हमारा एप्लिकेशन निम्नलिखित अनुमतियों के लिए एक्सेस का अनुरोध करता है:</p>
+            <ul>
+                <li><strong>pages_manage_posts:</strong> यह एप्लिकेशन को आपके अधिकृत फेसबुक पेज पर सीधे रील्स (Reels) बनाने और प्रकाशित करने की अनुमति देता है।</li>
+                <li><strong>pages_read_engagement:</strong> यह एप्लिकेशन को आपके अधिकृत फेसबुक पेज पर प्रकाशित पोस्टों की स्थिति और इंगेजमेंट मेट्रिक्स की जांच करने की अनुमति देता है।</li>
+            </ul>
+            <p>हमारा ऐप केवल उन्हीं फेसबुक पेजों तक पहुँचता है जिनके लिए आपने स्पष्ट रूप से अनुमति प्रदान की है।</p>
+        </div>
+
+        <div class="section">
+            <h2>2. उद्देश्य और स्वचालित अपलोड प्रणाली</h2>
+            <p>इस एप्लिकेशन का एकमात्र उद्देश्य कंटेंट पब्लिशिंग और फेसबुक पेज मैनेजमेंट है। यह निम्नलिखित विवरणों के साथ एक ऑटोमेशन सिस्टम के रूप में काम करता है:</p>
+            <ul>
+                <li><strong>कार्य:</strong> यह निर्दिष्ट स्टोरेज से वीडियो फाइलों को स्वचालित रूप से प्राप्त करता है और उन्हें आपके पेज पर शॉर्ट वर्टिकल वीडियो (फेसबुक रील्स) के रूप में प्रकाशित करता है।</li>
+                <li><strong>अपलोड सीमा:</strong> प्राकृतिक पोस्टिंग गति और फेसबुक प्लेटफॉर्म सीमाओं के अनुपालन को सुनिश्चित करने के लिए ऑटोमेशन सिस्टम 24 घंटे में अधिकतम <strong>5 रील्स</strong> अपलोड करने तक सीमित है।</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>3. जानकारी का संग्रह और सुरक्षा</h2>
+            <p>हमारा एप्लिकेशन डेटा को कम से कम एकत्र करने की नीति का पालन करता है:</p>
+            <ul>
+                <li><strong>व्यक्तिगत डेटा:</strong> हम आपकी कोई व्यक्तिगत पहचान योग्य जानकारी (PII) जैसे कि आपका ईमेल पता, फोन नंबर या पासवर्ड एकत्र, संग्रहीत या संसाधित नहीं करते हैं।</li>
+                <li><strong>टोकन और पेज विवरण:</strong> ऑटोमेशन लिंक को बनाए रखने के लिए सेशन एक्सेस टोकन (एन्क्रिप्टेड) और फेसबुक पेज आईडी हमारे सुरक्षित प्राइवेट एनवायरनमेंट में संग्रहीत किए जाते हैं।</li>
+                <li><strong>रील्स कंटेंट:</strong> डाउनलोड की गई अस्थायी वीडियो फाइलों को सफल अपलोड या विफलता दर्ज होने के तुरंत बाद हमारे सर्वर से हटा दिया जाता है।</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>4. डेटा साझा करना और स्थानांतरण</h2>
+            <div class="highlight-box">
+                <p>हम किसी भी उद्देश्य के लिए किसी भी तीसरे पक्ष के साथ उपयोगकर्ता डेटा या एक्सेस क्रेडेंशियल बेचते, किराए पर नहीं देते, व्यापार नहीं करते या साझा नहीं करते हैं। सभी क्रेडेंशियल और सामग्री विशेष रूप से आपके अपने फेसबुक पेज पर रील्स प्रकाशित करने के लिए उपयोग किए जाते हैं।</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>5. डेटा प्रतिधारण और विलोपन (Data Deletion)</h2>
+            <p>हम केवल ऑटोमेशन लूप चलाने के लिए आवश्यक समय तक ही क्रेडेंशियल्स को सुरक्षित रखते हैं। यदि आप एक्सेस हटाना चाहते हैं और सभी डेटा हटाना चाहते हैं:</p>
+            <ol style="margin-left: 24px; margin-bottom: 16px; color: var(--text-muted); font-size: 15px;">
+                <li style="margin-bottom: 8px;">अपने फेसबुक अकाउंट की <strong>Settings & Privacy > Settings</strong> पर जाएं।</li>
+                <li style="margin-bottom: 8px;"><strong>Apps and Websites</strong> सेक्शन में जाएं।</li>
+                <li style="margin-bottom: 8px;">हमारे एप्लिकेशन <strong>Beast Planet Automation</strong> को खोजें और <strong>Remove</strong> बटन पर क्लिक करें।</li>
+                <li style="margin-bottom: 8px;">ऐसा करने से एक्सेस टोकन तुरंत अमान्य हो जाएंगे और हमारे पास मौजूद इंटीग्रेशन का सारा डेटा डिलीट कर दिया जाएगा।</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <h2>6. फेसबुक नीति अनुपालन</h2>
+            <p>हम फेसबुक प्लेटफॉर्म नीतियों, ग्राफ एपीआई सेवा शर्तों और सभी लागू वैश्विक गोपनीयता कानूनों का कड़ाई से पालन करने के लिए समर्पित हैं। हम सुनिश्चित करते हैं कि हमारा ऑटोमेशन जिम्मेदारी से काम करे और मेटा द्वारा स्थापित सीमाओं का सम्मान करे।</p>
+        </div>
+
+        <div class="section">
+            <h2>7. संपर्क सूत्र</h2>
+            <p>यदि गोपनीयता या डेटा प्रबंधन के संबंध में आपके कोई प्रश्न या चिंताएं हैं, तो कृपया हमारे फेसबुक पेज के माध्यम से हमसे संपर्क करें:</p>
+            <p><a href="https://www.facebook.com/RealBeastPlanet" target="_blank">फेसबुक पेज: Real Beast Planet</a></p>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Beast Planet. All rights reserved.</p>
+    </footer>
+</div>
+
+<script>
+    function switchLang(lang) {
+        // Toggle active buttons
+        document.getElementById('btn-en').classList.remove('active');
+        document.getElementById('btn-hi').classList.remove('active');
+        document.getElementById('btn-' + lang).classList.add('active');
+
+        // Toggle active sections
+        document.getElementById('lang-en').classList.remove('active');
+        document.getElementById('lang-hi').classList.remove('active');
+        document.getElementById('lang-' + lang).classList.add('active');
+    }
+</script>
 </body>
 </html>
