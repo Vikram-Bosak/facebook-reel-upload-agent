@@ -10,29 +10,41 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from logger import logger
 from database import get_daily_upload_count
-from queue_manager import process_next_video
-from drive_reader import get_drive_service, get_daily_upload_count_from_drive, count_pending_videos, has_uploaded_since_datetime
+from queue_manager import process_next_media
+from drive_reader import get_drive_service, get_daily_upload_count_from_drive, count_pending_media, has_uploaded_since_datetime
 from health_checker import run_all_health_checks
 from watchdog import update_heartbeat
 
 def get_latest_scheduled_slot_time(est_now):
     """
     Computes the start datetime of the latest scheduled slot that should have run.
-    Scheduled slots: 00:00, 08:00, 12:00, 16:00, 20:00 EST.
+    Returns (datetime, media_type).
     """
-    scheduled_hours = sorted([0, 8, 12, 16, 20])
-    slot_hour = None
-    for h in reversed(scheduled_hours):
-        if est_now.hour >= h:
-            slot_hour = h
-            break
+    SLOTS = [
+        {'hour': 8, 'minute': 0, 'type': 'reel'},
+        {'hour': 10, 'minute': 30, 'type': 'photo'},
+        {'hour': 12, 'minute': 30, 'type': 'reel'},
+        {'hour': 15, 'minute': 0, 'type': 'photo'},
+        {'hour': 17, 'minute': 0, 'type': 'reel'},
+        {'hour': 19, 'minute': 0, 'type': 'photo'},
+        {'hour': 20, 'minute': 30, 'type': 'reel'},
+        {'hour': 22, 'minute': 30, 'type': 'photo'},
+        {'hour': 23, 'minute': 45, 'type': 'reel'}
+    ]
+    
+    latest_slot = None
+    for s in SLOTS:
+        slot_dt = est_now.replace(hour=s['hour'], minute=s['minute'], second=0, microsecond=0)
+        if est_now >= slot_dt:
+            latest_slot = (slot_dt, s['type'])
             
-    if slot_hour is not None:
-        return est_now.replace(hour=slot_hour, minute=0, second=0, microsecond=0)
+    if latest_slot is not None:
+        return latest_slot
     else:
-        # Fallback to the 8:00 PM slot of the previous day
+        # Fallback to the last slot of the previous day
         prev_day = est_now - timedelta(days=1)
-        return prev_day.replace(hour=20, minute=0, second=0, microsecond=0)
+        last_s = SLOTS[-1]
+        return (prev_day.replace(hour=last_s['hour'], minute=last_s['minute'], second=0, microsecond=0), last_s['type'])
 
 def validate_env():
     """Validates that all required environment variables are present and correct."""
@@ -108,48 +120,67 @@ def main():
         return
 
     # Check if we have pending videos
-    pending_count = count_pending_videos()
-    logger.info(f"Pending videos in Google Drive: {pending_count}")
-    if pending_count == 0:
-        logger.info("No pending videos found in Google Drive. Exiting.")
-        update_heartbeat("idle", {"message": "No pending videos in Google Drive."})
-        return
-
-    # Check daily upload limits (Max 5 per day) directly from Drive (EST timezone based)
-    logger.info("Checking daily upload count from Google Drive (US Eastern Time)...")
-    daily_count = get_daily_upload_count_from_drive(service, root_folder_id)
-    logger.info(f"Current daily uploads today (EST): {daily_count}/5")
-    
-    if daily_count >= 5:
-        logger.warning("Daily upload limit of 5 reached. Exiting scheduler.")
-        update_heartbeat("idle", {"message": "Daily upload limit of 5 reached."})
-        return
+    pending_reels = count_pending_media('reel')
+    pending_photos = count_pending_media('photo')
+    logger.info(f"Pending in Google Drive -> Reels: {pending_reels}, Photos: {pending_photos}")
 
     # Determine force upload status
     force_upload = args.force or os.environ.get('FORCE_UPLOAD') == 'true'
 
     if force_upload:
         logger.info("Force upload enabled. Bypassing US time slot check.")
+        media_to_upload = 'reel' if pending_reels > 0 else ('photo' if pending_photos > 0 else None)
+        if not media_to_upload:
+            logger.info("No media available to force upload.")
+            return
     else:
         # Time slot logic (US Eastern Time)
         est_now = datetime.now(ZoneInfo('America/New_York'))
         logger.info(f"Current time in US Eastern Time: {est_now.strftime('%Y-%m-%d %I:%M %p %Z')}")
 
-        latest_slot_dt = get_latest_scheduled_slot_time(est_now)
+        latest_slot_dt, target_media_type = get_latest_scheduled_slot_time(est_now)
         latest_slot_dt_utc = latest_slot_dt.astimezone(timezone.utc)
         
+        # We need the root folder ID for the target media to check if it was already uploaded
+        check_folder_id = root_folder_id if target_media_type == 'reel' else os.environ.get('GOOGLE_DRIVE_PHOTO_FOLDER_ID')
+
         # Check if an upload has already occurred in/since the latest slot
-        if has_uploaded_since_datetime(service, root_folder_id, latest_slot_dt_utc):
-            logger.info(f"Already uploaded a video during or after the latest slot ({latest_slot_dt.strftime('%I:%M %p %Z')}). Skipping.")
+        if check_folder_id and has_uploaded_since_datetime(service, check_folder_id, latest_slot_dt_utc):
+            logger.info(f"Already uploaded for latest slot ({latest_slot_dt.strftime('%I:%M %p %Z')} - {target_media_type}). Skipping.")
             update_heartbeat("idle", {"message": f"Already uploaded in slot {latest_slot_dt.strftime('%I:%M %p %Z')}"})
             return
 
-        logger.info(f"No upload detected for latest slot ({latest_slot_dt.strftime('%I:%M %p %Z')}). Missed slot/catch-up triggered!")
+        logger.info(f"No upload detected for latest slot ({latest_slot_dt.strftime('%I:%M %p %Z')} - {target_media_type}). Triggering!")
+        
+        media_to_upload = target_media_type
+        
+        # Fallback logic
+        if target_media_type == 'reel' and pending_reels == 0:
+            logger.warning("Slot requires a Reel, but 0 pending. Falling back to Photo if available.")
+            if pending_photos > 0:
+                media_to_upload = 'photo'
+            else:
+                logger.info("No photos available for fallback either.")
+                return
+        elif target_media_type == 'photo' and pending_photos == 0:
+            logger.warning("Slot requires a Photo, but 0 pending. Falling back to Reel if available.")
+            if pending_reels > 0:
+                media_to_upload = 'reel'
+            else:
+                logger.info("No reels available for fallback either.")
+                return
+                
+        # Jitter implementation
+        import random
+        import time
+        jitter_seconds = random.randint(0, 15 * 60)
+        logger.info(f"Applying human-like jitter. Sleeping for {jitter_seconds} seconds ({jitter_seconds//60} mins)...")
+        time.sleep(jitter_seconds)
 
-    # Process the next video in the queue with safety wrapping
+    # Process the next media in the queue
     update_heartbeat("processing")
     try:
-        success = process_next_video()
+        success = process_next_media(media_to_upload)
         if success:
             update_heartbeat("healthy", {"message": "Cycle completed successfully"})
         else:
@@ -159,10 +190,9 @@ def main():
         update_heartbeat("error", {"error": str(e)})
         try:
             from telegram_reporter import report_failure
-            report_failure("Queue Manager Process", f"Critical Queue Manager failure: {e}", pending_count)
+            report_failure("Queue Manager Process", f"Critical Queue Manager failure: {e}", pending_reels + pending_photos)
         except Exception as tel_err:
             logger.error(f"Failed to report crash to Telegram: {tel_err}")
-
 
 if __name__ == "__main__":
     main()

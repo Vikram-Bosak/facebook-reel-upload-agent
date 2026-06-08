@@ -32,6 +32,13 @@ def init_db():
         # Column already exists
         pass
         
+    # Run migration to add media_type column if it doesn't exist
+    try:
+        cursor.execute("ALTER TABLE reels ADD COLUMN media_type TEXT DEFAULT 'reel'")
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
+        
     conn.commit()
     conn.close()
 
@@ -53,14 +60,14 @@ def is_duplicate(filename, file_hash=None):
             return True
     return False
 
-def insert_reel(filename, file_hash=None):
+def insert_media(filename, file_hash=None, media_type='reel'):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     try:
         cursor.execute('''
-            INSERT INTO reels (filename, file_hash, status, attempts)
-            VALUES (?, ?, 'pending', 0)
-        ''', (filename, file_hash))
+            INSERT INTO reels (filename, file_hash, status, attempts, media_type)
+            VALUES (?, ?, 'pending', 0, ?)
+        ''', (filename, file_hash, media_type))
         conn.commit()
         return cursor.lastrowid
     except sqlite3.IntegrityError:
@@ -101,14 +108,14 @@ def mark_reel_failed(filename):
     conn.commit()
     conn.close()
 
-def get_daily_upload_count():
+def get_daily_upload_count(media_type='reel'):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     today = datetime.now().strftime('%Y-%m-%d')
     cursor.execute('''
         SELECT COUNT(*) FROM reels 
-        WHERE status = 'uploaded' AND date(upload_time) = ?
-    ''', (today,))
+        WHERE status = 'uploaded' AND date(upload_time) = ? AND media_type = ?
+    ''', (today, media_type))
     count = cursor.fetchone()[0]
     conn.close()
     return count

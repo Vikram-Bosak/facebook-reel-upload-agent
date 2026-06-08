@@ -13,7 +13,7 @@ def clean_filename(filename):
     cleaned = re.sub(r'[-_]', ' ', name_without_ext)
     return cleaned.strip()
 
-def generate_seo_metadata(filename):
+def generate_seo_metadata(filename, media_type='reel'):
     """
     Generates SEO title, description, and hashtags based on the video filename.
     Returns a dictionary with 'title', 'description', and 'hashtags'.
@@ -33,18 +33,22 @@ def generate_seo_metadata(filename):
         
     topic = clean_filename(filename)
     
+    content_type_str = "Facebook Reel" if media_type == 'reel' else "Facebook Photo Post"
+    video_str = "short vertical video (Facebook Reel)" if media_type == 'reel' else "stunning photo/image"
+    hashtag_str = "#Reels" if media_type == 'reel' else "#PhotoOfTheDay"
+    
     system_prompt = (
-        "You are an expert Social Media Manager and SEO specialist for Facebook Reels targeting a United States audience. "
+        f"You are an expert Social Media Manager and SEO specialist for {content_type_str}s targeting a United States audience. "
         "Your goal is to maximize engagement, click-through rate, and virality."
     )
     
     user_prompt = f"""
-    Generate viral SEO metadata for a short vertical video (Facebook Reel) about: "{topic}".
+    Generate viral SEO metadata for a {video_str} about: "{topic}".
     
     Requirements:
     1. Title: Short, catchy, uses emotional words, includes relevant emojis. Max 60 characters.
     2. Description: 1-2 short sentences that create curiosity.
-    3. Hashtags: 5-8 highly relevant and trending hashtags (include #Reels).
+    3. Hashtags: 5-8 highly relevant and trending hashtags (include {hashtag_str}).
     
     Format the output exactly as JSON:
     {{

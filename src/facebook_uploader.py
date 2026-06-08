@@ -128,3 +128,39 @@ def upload_reel(video_path, caption, title=None):
         return f"https://www.facebook.com/{page_id}/videos/{video_id}"
     else:
         raise Exception(f"Failed to publish reel: {publish_data}")
+
+def upload_photo(photo_path, caption):
+    """
+    Uploads a photo to the Facebook Page using the Graph API.
+    Returns the Facebook URL if successful, or raises an Exception.
+    """
+    user_token, page_id = get_fb_credentials()
+    if not user_token or not page_id:
+        raise Exception("Facebook credentials missing. Ensure FB_ACCESS_TOKEN and FB_PAGE_ID are set.")
+
+    logger.info("Initializing Facebook Graph API photo upload process...")
+    # Resolve Page Access Token
+    access_token = get_page_access_token(user_token, page_id)
+
+    upload_url = f"https://graph.facebook.com/v19.0/{page_id}/photos"
+    payload = {
+        'access_token': access_token,
+        'message': caption
+    }
+    
+    with open(photo_path, 'rb') as f:
+        files = {
+            'source': f
+        }
+        logger.info("Uploading photo to Facebook Page...")
+        response = requests.post(upload_url, data=payload, files=files)
+        
+    _handle_api_error(response, "Upload Photo")
+    data = response.json()
+    
+    post_id = data.get('post_id') or data.get('id')
+    if post_id:
+        logger.info("Photo published successfully.")
+        return f"https://www.facebook.com/{post_id}"
+    else:
+        raise Exception(f"Failed to publish photo: {data}")

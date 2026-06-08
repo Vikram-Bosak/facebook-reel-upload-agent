@@ -45,21 +45,27 @@ def setup_folders(service, root_folder_id):
     failed_id = get_folder_id(service, root_folder_id, 'Failed')
     return pending_id, uploaded_id, failed_id
 
-def get_next_video():
+def get_next_media(media_type='reel'):
     """
-    Finds the first MP4 video in the 'Pending' folder, downloads it to temp/,
+    Finds the first media file in the 'Pending' folder, downloads it to temp/,
     and returns its file path, drive file ID, and the uploaded/failed folder IDs.
-    Returns None if no videos are found.
+    Returns None if no media are found.
     """
-    root_folder_id = os.environ.get('GOOGLE_DRIVE_FOLDER_ID')
+    if media_type == 'reel':
+        root_folder_id = os.environ.get('GOOGLE_DRIVE_FOLDER_ID')
+        mime_query = "mimeType='video/mp4'"
+    else:
+        root_folder_id = os.environ.get('GOOGLE_DRIVE_PHOTO_FOLDER_ID')
+        mime_query = "(mimeType='image/jpeg' or mimeType='image/png' or mimeType='image/jpg')"
+
     if not root_folder_id:
-        raise Exception("GOOGLE_DRIVE_FOLDER_ID is missing.")
+        raise Exception(f"Folder ID for {media_type} is missing from environment variables.")
         
     service = get_drive_service()
     pending_id, uploaded_id, failed_id = setup_folders(service, root_folder_id)
     
-    # Get the oldest video in Pending folder
-    query = f"'{pending_id}' in parents and mimeType='video/mp4' and trashed=false"
+    # Get the oldest media in Pending folder
+    query = f"'{pending_id}' in parents and {mime_query} and trashed=false"
     results = service.files().list(
         q=query, 
         orderBy="createdTime asc", 
@@ -113,18 +119,27 @@ def move_file(service, file_id, current_folder_id, new_folder_id):
         fields='id, parents'
     ).execute()
 
-def count_pending_videos():
-    """Returns the number of remaining videos in the Pending folder."""
+def count_pending_media(media_type='reel'):
+    """Returns the number of remaining media files in the Pending folder."""
     try:
-        root_folder_id = os.environ.get('GOOGLE_DRIVE_FOLDER_ID')
+        if media_type == 'reel':
+            root_folder_id = os.environ.get('GOOGLE_DRIVE_FOLDER_ID')
+            mime_query = "mimeType='video/mp4'"
+        else:
+            root_folder_id = os.environ.get('GOOGLE_DRIVE_PHOTO_FOLDER_ID')
+            mime_query = "(mimeType='image/jpeg' or mimeType='image/png' or mimeType='image/jpg')"
+
+        if not root_folder_id:
+            return 0
+
         service = get_drive_service()
         pending_id = get_folder_id(service, root_folder_id, 'Pending')
         
-        query = f"'{pending_id}' in parents and mimeType='video/mp4' and trashed=false"
+        query = f"'{pending_id}' in parents and {mime_query} and trashed=false"
         results = service.files().list(q=query, fields="files(id)").execute()
         return len(results.get('files', []))
     except Exception as e:
-        logger.error(f"Failed to count pending videos: {e}")
+        logger.error(f"Failed to count pending {media_type}s: {e}")
         return 0
 
 def get_daily_upload_count_from_drive(service, root_folder_id):

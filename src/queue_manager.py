@@ -3,18 +3,18 @@ import hashlib
 import ffmpeg
 import time
 try:
-    from .database import is_duplicate, insert_reel, update_reel_metadata, mark_reel_uploaded, mark_reel_failed, get_reel_status, increment_attempts, reset_attempts
+    from .database import is_duplicate, insert_media, update_reel_metadata, mark_reel_uploaded, mark_reel_failed, get_reel_status, increment_attempts, reset_attempts
     from .seo_generator import generate_seo_metadata, format_caption
-    from .facebook_uploader import upload_reel
+    from .facebook_uploader import upload_reel, upload_photo
     from .telegram_reporter import report_success, report_failure
-    from .drive_reader import get_next_video, move_file, count_pending_videos
+    from .drive_reader import get_next_media, move_file, count_pending_media
     from .logger import logger
 except ImportError:
-    from database import is_duplicate, insert_reel, update_reel_metadata, mark_reel_uploaded, mark_reel_failed, get_reel_status, increment_attempts, reset_attempts
+    from database import is_duplicate, insert_media, update_reel_metadata, mark_reel_uploaded, mark_reel_failed, get_reel_status, increment_attempts, reset_attempts
     from seo_generator import generate_seo_metadata, format_caption
-    from facebook_uploader import upload_reel
+    from facebook_uploader import upload_reel, upload_photo
     from telegram_reporter import report_success, report_failure
-    from drive_reader import get_next_video, move_file, count_pending_videos
+    from drive_reader import get_next_media, move_file, count_pending_media
     from logger import logger
 
 class PermanentValidationError(Exception):
@@ -29,15 +29,20 @@ def get_file_hash(filepath):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
-def validate_video(filepath):
+def validate_media(filepath, media_type='reel'):
     """
-    Validates if video meets Facebook Reels constraints:
-    - MP4 format
-    - < 60 seconds
-    - < 100 MB
-    - Vertical orientation (width < height, or 9:16 approx)
+    Validates if media meets constraints.
     """
     try:
+        if media_type == 'photo':
+            file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
+            if file_size_mb > 30:
+                return False, "Photo exceeds 30MB limit"
+            ext = os.path.splitext(filepath)[1].lower()
+            if ext not in ['.jpg', '.jpeg', '.png']:
+                return False, "Photo format must be JPG or PNG"
+            return True, "Valid"
+
         # Check file size (100 MB max)
         file_size_mb = os.path.getsize(filepath) / (1024 * 1024)
         if file_size_mb > 100:
@@ -66,13 +71,13 @@ def validate_video(filepath):
     except ffmpeg.Error as e:
         return False, f"FFmpeg error parsing video: {e}"
     except Exception as e:
-        return False, f"Error validating video: {e}"
+        return False, f"Error validating media: {e}"
 
-def process_next_video():
-    """Main workflow to process one video from the queue with robust retry/validation logic."""
-    video_info = get_next_video()
+def process_next_media(media_type='reel'):
+    """Main workflow to process one media item from the queue with robust retry/validation logic."""
+    video_info = get_next_media(media_type)
     if not video_info:
-        logger.info("No pending videos found in Google Drive.")
+        logger.info(f"No pending {media_type}s found in Google Drive.")
         return False
         
     filepath = video_info['path']
@@ -80,9 +85,9 @@ def process_next_video():
     file_id = video_info['file_id']
     service = video_info['service']
     
-    remaining_queue = count_pending_videos() - 1
+    remaining_queue = count_pending_media(media_type) - 1
     
-    logger.info(f"Processing video: {filename}")
+    logger.info(f"Processing {media_type}: {filename}")
     
     try:
         # Duplicate Check
@@ -90,40 +95,43 @@ def process_next_video():
         db_status, db_attempts = get_reel_status(filename, file_hash)
         
         if db_status == 'uploaded':
-            raise PermanentValidationError("Duplicate file detected: Video already successfully uploaded.")
+            raise PermanentValidationError(f"Duplicate file detected: {media_type} already successfully uploaded.")
         elif db_status == 'failed':
-            raise PermanentValidationError("Duplicate file detected: Video has already failed permanently.")
+            raise PermanentValidationError(f"Duplicate file detected: {media_type} has already failed permanently.")
         elif db_status == 'pending':
             if db_attempts >= 3:
-                raise PermanentValidationError(f"Video has already failed after {db_attempts} attempts.")
+                raise PermanentValidationError(f"{media_type} has already failed after {db_attempts} attempts.")
             else:
-                logger.info(f"Video {filename} is in pending status (attempt {db_attempts + 1}/3). Retrying...")
+                logger.info(f"{media_type} {filename} is in pending status (attempt {db_attempts + 1}/3). Retrying...")
             
-        # Video Validation
-        is_valid, msg = validate_video(filepath)
+        # Media Validation
+        is_valid, msg = validate_media(filepath, media_type)
         if not is_valid:
-            raise PermanentValidationError(f"Video validation failed: {msg}")
+            raise PermanentValidationError(f"{media_type} validation failed: {msg}")
             
         # Database tracking (prevent parallel processing)
         if db_status is None:
-            if not insert_reel(filename, file_hash):
+            if not insert_media(filename, file_hash, media_type):
                 raise PermanentValidationError("Failed to lock file in database. Might be processing already.")
             
         # AI SEO Generation
         logger.info("Generating SEO metadata via OpenAI...")
-        seo = generate_seo_metadata(filename)
+        seo = generate_seo_metadata(filename, media_type)
         caption = format_caption(seo)
         update_reel_metadata(filename, seo['title'], seo['description'], seo['hashtags'])
         
         # Facebook Upload with Retries
-        logger.info("Uploading to Facebook Reels...")
+        logger.info(f"Uploading to Facebook {media_type}s...")
         max_retries = 3
         retry_delays = [60, 300, 900] # 1 min, 5 min, 15 min
         fb_url = None
         
         for attempt in range(max_retries):
             try:
-                fb_url = upload_reel(filepath, caption, title=seo.get('title'))
+                if media_type == 'reel':
+                    fb_url = upload_reel(filepath, caption, title=seo.get('title'))
+                else:
+                    fb_url = upload_photo(filepath, caption)
                 break
             except Exception as e:
                 if attempt < max_retries - 1:
