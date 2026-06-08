@@ -143,7 +143,7 @@ def process_next_media(media_type='reel'):
                     
         # Success Handling
         mark_reel_uploaded(filename, fb_url)
-        report_success(filename, seo['title'], fb_url, remaining_queue)
+        report_success(filename, seo['title'], fb_url, remaining_queue, media_type)
         
         # Move file in Drive
         move_file(service, file_id, video_info['pending_id'], video_info['uploaded_id'])
@@ -151,9 +151,9 @@ def process_next_media(media_type='reel'):
         
     except PermanentValidationError as e:
         # Failure Handling for permanent/validation errors
-        logger.error(f"Permanent validation error processing video: {e}")
+        logger.error(f"Permanent validation error processing media: {e}")
         mark_reel_failed(filename)
-        report_failure(filename, str(e), remaining_queue)
+        report_failure(filename, str(e), remaining_queue, media_type)
         
         # Move file in Drive to Failed immediately
         try:
@@ -169,9 +169,9 @@ def process_next_media(media_type='reel'):
         # Increment attempt counter
         attempts = increment_attempts(filename)
         if attempts >= 3:
-            logger.error(f"Max attempts (3) reached for video {filename}. Marking as failed permanently.")
+            logger.error(f"Max attempts (3) reached for {media_type} {filename}. Marking as failed permanently.")
             mark_reel_failed(filename)
-            report_failure(filename, f"Upload failed after 3 attempts: {e}", remaining_queue)
+            report_failure(filename, f"Upload failed after 3 attempts: {e}", remaining_queue, media_type)
             
             # Move file in Drive to Failed
             try:
@@ -183,7 +183,7 @@ def process_next_media(media_type='reel'):
             # Keep the file in the Pending folder so the scheduler retries it next run
             warn_msg = f"Upload failed (attempt {attempts}/3): {e}. Remaining in pending for retry."
             logger.warning(warn_msg)
-            report_failure(filename, warn_msg, remaining_queue)
+            report_failure(filename, warn_msg, remaining_queue, media_type)
             
     finally:
         # Cleanup temp file

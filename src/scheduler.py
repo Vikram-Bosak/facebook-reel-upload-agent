@@ -20,12 +20,16 @@ def get_latest_scheduled_slot_time(est_now):
     Computes the start datetime of the latest scheduled slot that should have run.
     Returns (datetime, media_type).
     """
-    # TEMPORARY SCHEDULE: Only Photos (4 posts per day)
     SLOTS = [
-        {'hour': 9, 'minute': 0, 'type': 'photo'},
-        {'hour': 13, 'minute': 0, 'type': 'photo'},
-        {'hour': 17, 'minute': 0, 'type': 'photo'},
-        {'hour': 21, 'minute': 0, 'type': 'photo'}
+        {'hour': 8, 'minute': 0, 'type': 'reel'},
+        {'hour': 10, 'minute': 30, 'type': 'photo'},
+        {'hour': 12, 'minute': 30, 'type': 'reel'},
+        {'hour': 15, 'minute': 0, 'type': 'photo'},
+        {'hour': 17, 'minute': 0, 'type': 'reel'},
+        {'hour': 19, 'minute': 0, 'type': 'photo'},
+        {'hour': 20, 'minute': 30, 'type': 'reel'},
+        {'hour': 22, 'minute': 30, 'type': 'photo'},
+        {'hour': 23, 'minute': 45, 'type': 'reel'}
     ]
     
     latest_slot = None
@@ -125,10 +129,9 @@ def main():
 
     if force_upload:
         logger.info("Force upload enabled. Bypassing US time slot check.")
-        # Temporarily prioritize photos for force upload
-        media_to_upload = 'photo' if pending_photos > 0 else None
+        media_to_upload = 'reel' if pending_reels > 0 else ('photo' if pending_photos > 0 else None)
         if not media_to_upload:
-            logger.info("No photos available to force upload.")
+            logger.info("No media available to force upload.")
             return
     else:
         # Time slot logic (US Eastern Time)

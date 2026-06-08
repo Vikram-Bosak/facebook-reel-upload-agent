@@ -161,6 +161,10 @@ def upload_photo(photo_path, caption):
     post_id = data.get('post_id') or data.get('id')
     if post_id:
         logger.info("Photo published successfully.")
-        return f"https://www.facebook.com/{post_id}"
+        if '_' in post_id:
+            parts = post_id.split('_')
+            return f"https://www.facebook.com/{parts[0]}/posts/{parts[1]}"
+        else:
+            return f"https://www.facebook.com/{page_id}/posts/{post_id}"
     else:
         raise Exception(f"Failed to publish photo: {data}")

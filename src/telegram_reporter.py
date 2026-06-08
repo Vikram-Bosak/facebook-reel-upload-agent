@@ -32,63 +32,77 @@ def send_telegram_message(message):
 def get_next_run_message():
     """Calculates when the next scheduled upload slot is in US Eastern Time."""
     from zoneinfo import ZoneInfo
+    from datetime import datetime, timedelta
     
     # Get current time in US Eastern Time
     est_now = datetime.now(ZoneInfo('America/New_York'))
-    current_hour = est_now.hour
     
-    scheduled_hours = sorted([0, 8, 12, 16, 20])
+    SLOTS = [
+        {'hour': 8, 'minute': 0, 'type': 'reel'},
+        {'hour': 10, 'minute': 30, 'type': 'photo'},
+        {'hour': 12, 'minute': 30, 'type': 'reel'},
+        {'hour': 15, 'minute': 0, 'type': 'photo'},
+        {'hour': 17, 'minute': 0, 'type': 'reel'},
+        {'hour': 19, 'minute': 0, 'type': 'photo'},
+        {'hour': 20, 'minute': 30, 'type': 'reel'},
+        {'hour': 22, 'minute': 30, 'type': 'photo'},
+        {'hour': 23, 'minute': 45, 'type': 'reel'}
+    ]
     
-    next_hour = None
+    next_slot = None
     next_day = False
     
-    for h in scheduled_hours:
-        if h > current_hour:
-            next_hour = h
+    for s in SLOTS:
+        slot_dt = est_now.replace(hour=s['hour'], minute=s['minute'], second=0, microsecond=0)
+        if slot_dt > est_now:
+            next_slot = s
             break
             
-    if next_hour is None:
-        # Next run is midnight tomorrow EST
-        next_hour = 0
+    if next_slot is None:
+        next_slot = SLOTS[0]
         next_day = True
         
     if next_day:
-        next_run_est = est_now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        next_run_est = est_now.replace(hour=next_slot['hour'], minute=next_slot['minute'], second=0, microsecond=0) + timedelta(days=1)
     else:
-        next_run_est = est_now.replace(hour=next_hour, minute=0, second=0, microsecond=0)
+        next_run_est = est_now.replace(hour=next_slot['hour'], minute=next_slot['minute'], second=0, microsecond=0)
         
     diff = next_run_est - est_now
     hours, remainder = divmod(diff.seconds, 3600)
     minutes, _ = divmod(remainder, 60)
     
-    # We display time_str in EST/EDT format since uploads are scheduled in EST
     time_str = next_run_est.strftime("%I:%M %p %Z").strip()
+    media_str = next_slot['type'].capitalize()
     
     relative_str = ""
     if hours > 0:
         relative_str += f"{hours}h "
     relative_str += f"{minutes}m"
     
-    return f"{time_str} (in {relative_str})"
+    return f"{time_str} ({media_str}) (in {relative_str})"
 
-def report_success(filename, seo_title, facebook_url, remaining_queue):
+def report_success(filename, seo_title, facebook_url, remaining_queue, media_type='reel'):
     from zoneinfo import ZoneInfo
     current_time = datetime.now(ZoneInfo('America/New_York')).strftime("%I:%M %p %Z")
+    emoji = "🖼️" if media_type == 'photo' else "🎥"
     message = (
-        "✅ <b>Video Successfully Uploaded</b>\n\n"
-        f"📁 <b>Video Name:</b> {filename}\n\n"
+        "✅ <b>Upload Successfully Completed</b>\n\n"
+        f"📌 <b>Post Type:</b> {media_type.capitalize()} {emoji}\n\n"
+        f"📁 <b>File Name:</b> {filename}\n\n"
         f"🕒 <b>Upload Time:</b> {current_time}\n\n"
-        f"🔗 <b>Facebook Video Link:</b> {facebook_url}\n\n"
+        f"🔗 <b>Facebook Public Link:</b> {facebook_url}\n\n"
         f"⏰ <b>Next Scheduled Upload:</b> {get_next_run_message()}"
     )
     return send_telegram_message(message)
 
-def report_failure(filename, error_message, remaining_queue):
+def report_failure(filename, error_message, remaining_queue, media_type='reel'):
     from zoneinfo import ZoneInfo
     current_time = datetime.now(ZoneInfo('America/New_York')).strftime("%I:%M %p %Z")
+    emoji = "🖼️" if media_type == 'photo' else "🎥"
     message = (
-        "❌ <b>Video Upload Failed</b>\n\n"
-        f"📁 <b>Video Name:</b> {filename}\n\n"
+        "❌ <b>Upload Failed</b>\n\n"
+        f"📌 <b>Post Type:</b> {media_type.capitalize()} {emoji}\n\n"
+        f"📁 <b>File Name:</b> {filename}\n\n"
         f"⚠️ <b>Error:</b> {error_message}\n\n"
         f"🕒 <b>Attempt Time:</b> {current_time}\n\n"
         f"⏰ <b>Next Scheduled Upload:</b> {get_next_run_message()}"
