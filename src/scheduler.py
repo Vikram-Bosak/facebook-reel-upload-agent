@@ -117,7 +117,7 @@ def main():
             report_failure("System Health Check", f"Critical Health Check Failure:\n{health_results}", 0)
         except Exception as tel_err:
             logger.error(f"Failed to send health failure notification: {tel_err}")
-        return
+        sys.exit(1)
 
     # Check if we have pending videos
     pending_reels = count_pending_media('reel')

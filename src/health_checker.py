@@ -29,13 +29,17 @@ def check_facebook_token(access_token, page_id):
     try:
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
+            user_data = response.json()
+            if str(user_data.get('id')) == str(page_id):
+                return True, f"Facebook API connection successful. Verified access via Page Token for: {user_data.get('name')} ({page_id})"
+            
             accounts_url = f"https://graph.facebook.com/v19.0/me/accounts?limit=100&access_token={access_token}"
             acc_resp = requests.get(accounts_url, timeout=10)
             if acc_resp.status_code == 200:
                 pages = acc_resp.json().get('data', [])
                 for page in pages:
                     if str(page.get('id')) == str(page_id):
-                        return True, f"Facebook API connection successful. Verified access to page: {page.get('name')} ({page_id})"
+                        return True, f"Facebook API connection successful. Verified access to page via User Token: {page.get('name')} ({page_id})"
                 return False, f"Facebook API connection successful, but target Page ID {page_id} was not found in user accounts."
             else:
                 return False, f"Facebook API reachable, but failed to query page accounts: {acc_resp.text}"
