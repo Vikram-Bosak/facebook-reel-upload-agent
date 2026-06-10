@@ -30,19 +30,27 @@ def check_facebook_token(access_token, page_id):
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
             user_data = response.json()
-            if str(user_data.get('id')) == str(page_id):
-                return True, f"Facebook API connection successful. Verified access via Page Token for: {user_data.get('name')} ({page_id})"
+            retrieved_id = str(user_data.get('id', '')).strip()
+            target_id = str(page_id).strip()
+            
+            if retrieved_id == target_id:
+                return True, f"Facebook API connection successful. Verified access via Page Token for: {user_data.get('name')} ({target_id})"
+            
+            logger.warning(f"Token resolves to ID {retrieved_id}, but expected {target_id}. Checking if it's a User Token with access to multiple pages...")
             
             accounts_url = f"https://graph.facebook.com/v19.0/me/accounts?limit=100&access_token={access_token}"
             acc_resp = requests.get(accounts_url, timeout=10)
             if acc_resp.status_code == 200:
                 pages = acc_resp.json().get('data', [])
                 for page in pages:
-                    if str(page.get('id')) == str(page_id):
-                        return True, f"Facebook API connection successful. Verified access to page via User Token: {page.get('name')} ({page_id})"
-                return False, f"Facebook API connection successful, but target Page ID {page_id} was not found in user accounts."
+                    if str(page.get('id')).strip() == target_id:
+                        return True, f"Facebook API connection successful. Verified access to page via User Token: {page.get('name')} ({target_id})"
+                return False, f"Facebook API connection successful, but target Page ID {target_id} was not found in user accounts."
             else:
-                return False, f"Facebook API reachable, but failed to query page accounts: {acc_resp.text}"
+                err_text = acc_resp.text
+                if "(#100) Tried accessing nonexisting field" in err_text:
+                    return False, f"The provided token is a Page Token for '{user_data.get('name')}' (ID: {retrieved_id}), but you configured FB_PAGE_ID as {target_id}. They do not match!"
+                return False, f"Facebook API reachable, but failed to query page accounts: {err_text}"
         else:
             try:
                 err_data = response.json()
