@@ -116,10 +116,4 @@ def upload_youtube_shorts(video_path, title, description, tags=None):
         logger.error(f"YouTube Shorts upload failed: {e}")
         raise
 
-def upload_youtube_community_post(image_path, text):
-    """
-    Dummy function for YouTube Community Post.
-    The official YouTube Data API v3 does not support uploading Community Posts.
-    """
-    logger.warning("YouTube Community Posts via official Data API v3 is not supported. Skipping.")
-    return None
+

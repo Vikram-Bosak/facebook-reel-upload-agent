@@ -8,7 +8,7 @@ try:
     from .facebook_uploader import upload_reel, upload_photo
     from .telegram_reporter import report_success, report_failure
     from .drive_reader import get_next_media, move_file, count_pending_media
-    from .youtube_uploader import upload_youtube_shorts, upload_youtube_community_post
+    from .youtube_uploader import upload_youtube_shorts
     from .logger import logger
 except ImportError:
     from database import is_duplicate, insert_media, update_reel_metadata, mark_reel_uploaded, mark_reel_failed, get_reel_status, increment_attempts, reset_attempts
@@ -16,7 +16,7 @@ except ImportError:
     from facebook_uploader import upload_reel, upload_photo
     from telegram_reporter import report_success, report_failure
     from drive_reader import get_next_media, move_file, count_pending_media
-    from youtube_uploader import upload_youtube_shorts, upload_youtube_community_post
+    from youtube_uploader import upload_youtube_shorts
     from logger import logger
 
 class PermanentValidationError(Exception):
@@ -151,11 +151,6 @@ def process_next_media(media_type='reel'):
             except Exception as e:
                 logger.error(f"YouTube Shorts upload failed, but Facebook succeeded: {e}")
                 yt_url = f"Error: {e}"
-        else:
-            try:
-                yt_url = upload_youtube_community_post(filepath, caption)
-            except Exception as e:
-                logger.error(f"YouTube Community Post failed: {e}")
 
         # Success Handling
         mark_reel_uploaded(filename, fb_url)

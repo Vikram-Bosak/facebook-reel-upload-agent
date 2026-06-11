@@ -93,19 +93,23 @@ def report_success(filename, seo_title, description, hashtags, facebook_url, you
     github_run_url = f"{github_repo_url}/actions/runs/{github_run_id}" if github_run_id else "Local Run"
     
     media_label = "Photo" if media_type == 'photo' else "Video"
-    yt_label = "YouTube Community Post" if media_type == 'photo' else "YouTube Video"
     fb_label = "Facebook Photo Post" if media_type == 'photo' else "Facebook Reel"
     
     hashtag_str = " ".join(hashtags) if isinstance(hashtags, list) else str(hashtags)
     
-    yt_status = "Success" if youtube_url and not youtube_url.startswith("Error") else "Failed / Skipped"
+    yt_status_line = ""
+    yt_url_line = ""
+    if media_type == 'reel':
+        yt_status = "Success" if youtube_url and not youtube_url.startswith("Error") else "Failed / Skipped"
+        yt_status_line = f"📤 YouTube Upload Status: {yt_status}\n"
+        yt_url_line = f"▶️ YouTube Video URL:\n{youtube_url if youtube_url else 'N/A'}\n\n"
     
     message = (
         "✅ Pipeline Run Completed\n\n"
         f"🎬 {media_label} Name:\n"
         f"{seo_title}\n\n"
         f"📤 Facebook Upload Status: Success\n"
-        f"📤 YouTube Upload Status: {yt_status}\n\n"
+        f"{yt_status_line}\n"
         f"🏷️ SEO Title:\n"
         f"{seo_title}\n\n"
         f"📝 Description:\n"
@@ -114,8 +118,7 @@ def report_success(filename, seo_title, description, hashtags, facebook_url, you
         f"Original File: {filename}\n\n"
         f"🔗 {fb_label} URL:\n"
         f"{facebook_url}\n\n"
-        f"▶️ {yt_label} URL:\n"
-        f"{youtube_url if youtube_url else 'N/A'}\n\n"
+        f"{yt_url_line}"
         f"📦 GitHub Repository:\n"
         f"{github_repo_url}\n\n"
         f"📄 Workflow Run:\n"
