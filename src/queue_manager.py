@@ -159,7 +159,7 @@ def process_next_media(media_type='reel'):
 
         # Success Handling
         mark_reel_uploaded(filename, fb_url)
-        report_success(filename, seo['title'], fb_url, yt_url, remaining_queue, media_type)
+        report_success(filename, seo['title'], seo['description'], seo.get('hashtags', []), fb_url, yt_url, remaining_queue, media_type)
         
         # Move file in Drive
         move_file(service, file_id, video_info['pending_id'], video_info['uploaded_id'])

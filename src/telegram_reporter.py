@@ -81,10 +81,9 @@ def get_next_run_message():
     
     return f"{time_str} ({media_str}) (in {relative_str})"
 
-def report_success(filename, seo_title, facebook_url, youtube_url, remaining_queue, media_type='reel'):
+def report_success(filename, seo_title, description, hashtags, facebook_url, youtube_url, remaining_queue, media_type='reel'):
     from zoneinfo import ZoneInfo
     current_time = datetime.now(ZoneInfo('America/New_York')).strftime("%I:%M %p %Z")
-    emoji = "🖼️" if media_type == 'photo' else "🎥"
     
     github_repo = os.environ.get('GITHUB_REPOSITORY')
     github_run_id = os.environ.get('GITHUB_RUN_ID')
@@ -93,21 +92,34 @@ def report_success(filename, seo_title, facebook_url, youtube_url, remaining_que
     github_repo_url = f"{github_server_url}/{github_repo}" if github_repo else "Local Run"
     github_run_url = f"{github_repo_url}/actions/runs/{github_run_id}" if github_run_id else "Local Run"
     
-    yt_text = ""
-    if youtube_url:
-        yt_type = "Community Post" if media_type == 'photo' else "Shorts"
-        yt_text = f"▶️ <b>YouTube {yt_type} Link:</b> {youtube_url}\n\n"
-        
+    media_label = "Photo" if media_type == 'photo' else "Video"
+    yt_label = "YouTube Community Post" if media_type == 'photo' else "YouTube Video"
+    fb_label = "Facebook Photo Post" if media_type == 'photo' else "Facebook Reel"
+    
+    hashtag_str = " ".join(hashtags) if isinstance(hashtags, list) else str(hashtags)
+    
+    yt_status = "Success" if youtube_url and not youtube_url.startswith("Error") else "Failed / Skipped"
+    
     message = (
-        "✅ <b>Upload Successfully Completed</b>\n\n"
-        f"📌 <b>Post Type:</b> {media_type.capitalize()} {emoji}\n\n"
-        f"📁 <b>File Name:</b> {filename}\n\n"
-        f"🕒 <b>Upload Time:</b> {current_time}\n\n"
-        f"🔗 <b>Facebook Public Link:</b> {facebook_url}\n\n"
-        f"{yt_text}"
-        f"🐙 <b>GitHub Repository:</b> {github_repo_url}\n\n"
-        f"⚙️ <b>GitHub Actions Run:</b> {github_run_url}\n\n"
-        f"⏰ <b>Next Scheduled Upload:</b> {get_next_run_message()}"
+        "✅ Pipeline Run Completed\n\n"
+        f"🎬 {media_label} Name:\n"
+        f"{seo_title}\n\n"
+        f"📤 Facebook Upload Status: Success\n"
+        f"📤 YouTube Upload Status: {yt_status}\n\n"
+        f"🏷️ SEO Title:\n"
+        f"{seo_title}\n\n"
+        f"📝 Description:\n"
+        f"{description}\n\n"
+        f"{hashtag_str}\n\n"
+        f"Original File: {filename}\n\n"
+        f"🔗 {fb_label} URL:\n"
+        f"{facebook_url}\n\n"
+        f"▶️ {yt_label} URL:\n"
+        f"{youtube_url if youtube_url else 'N/A'}\n\n"
+        f"📦 GitHub Repository:\n"
+        f"{github_repo_url}\n\n"
+        f"📄 Workflow Run:\n"
+        f"{github_run_url}"
     )
     return send_telegram_message(message)
 
