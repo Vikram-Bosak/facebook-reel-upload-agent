@@ -53,5 +53,6 @@ jobs:
           OPENAI_API_BASE_URL: ${{ secrets.OPENAI_API_BASE_URL }}
           OPENAI_API_MODEL: ${{ secrets.OPENAI_API_MODEL }}
           GOOGLE_APPLICATION_CREDENTIALS: service-account.json
+          YOUTUBE_OAUTH_TOKEN_JSON: ${{ secrets.YOUTUBE_OAUTH_TOKEN_JSON }}
           FORCE_UPLOAD: ${{ github.event.inputs.force }}
         run: python src/scheduler.py
