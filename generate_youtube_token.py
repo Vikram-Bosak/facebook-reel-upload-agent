@@ -22,7 +22,7 @@ def generate_token():
     try:
         # Run the local server flow
         flow = InstalledAppFlow.from_client_secrets_file(client_secrets_file, SCOPES)
-        creds = flow.run_local_server(port=0)
+        creds = flow.run_local_server(port=8080, open_browser=False)
         
         # Output the credentials to JSON
         creds_json = creds.to_json()
