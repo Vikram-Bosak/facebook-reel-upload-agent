@@ -63,6 +63,10 @@ def upload_youtube_shorts(video_path, title, description, tags=None):
         
         if tags is None:
             tags = []
+        elif isinstance(tags, str):
+            tags = [t.strip().replace('#', '') for t in tags.split() if t.strip()]
+        elif not isinstance(tags, list):
+            tags = list(tags)
             
         # Ensure #Shorts is somewhere
         if '#shorts' not in title.lower() and '#shorts' not in description.lower():
