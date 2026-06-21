@@ -93,7 +93,7 @@ def upload_youtube_shorts(video_path, title, description, tags=None):
         insert_request = youtube.videos().insert(
             part=','.join(body.keys()),
             body=body,
-            media_body=MediaFileUpload(video_path, chunksize=-1, resumable=True)
+            media_body=MediaFileUpload(video_path, chunksize=1024*1024, resumable=True)
         )
         
         # Execute upload
