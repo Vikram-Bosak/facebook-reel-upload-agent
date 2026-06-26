@@ -117,7 +117,7 @@ def process_next_media(media_type='reel'):
                 raise PermanentValidationError("Failed to lock file in database. Might be processing already.")
             
         # AI SEO Generation
-        logger.info("Generating SEO metadata via OpenAI...")
+        logger.info("Generating SEO metadata via NVIDIA LLM...")
         seo = generate_seo_metadata(filename, media_type)
         caption = format_caption(seo)
         update_reel_metadata(filename, seo['title'], seo['description'], seo['hashtags'])
