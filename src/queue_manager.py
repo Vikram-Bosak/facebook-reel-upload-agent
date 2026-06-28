@@ -75,7 +75,7 @@ def validate_media(filepath, media_type='reel'):
     except Exception as e:
         return False, f"Error validating media: {e}"
 
-def process_next_media(media_type='reel'):
+def process_next_media(media_type='reel', fb_healthy=True):
     """Main workflow to process one media item from the queue with robust retry/validation logic."""
     video_info = get_next_media(media_type)
     if not video_info:
@@ -122,34 +122,39 @@ def process_next_media(media_type='reel'):
         caption = format_caption(seo)
         update_reel_metadata(filename, seo['title'], seo['description'], seo['hashtags'])
         
-        # Facebook Upload with Retries
-        logger.info(f"Uploading to Facebook {media_type}s...")
-        max_retries = 3
-        retry_delays = [60, 300, 900] # 1 min, 5 min, 15 min
+        # Facebook Upload with Retries (non-blocking for YouTube)
         fb_url = None
-        
-        for attempt in range(max_retries):
-            try:
-                if media_type == 'reel':
-                    fb_url = upload_reel(filepath, caption, title=seo.get('title'))
-                else:
-                    fb_url = upload_photo(filepath, caption)
-                break
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    wait_time = retry_delays[attempt]
-                    logger.warning(f"Upload attempt {attempt + 1} failed: {e}. Retrying in {wait_time}s...")
-                    time.sleep(wait_time)
-                else:
-                    raise Exception(f"Upload failed after {max_retries} attempts: {e}")
-                    
-        # YouTube Upload
+        fb_succeeded = False
+        if fb_healthy:
+            logger.info(f"Uploading to Facebook {media_type}s...")
+            max_retries = 3
+            retry_delays = [60, 300, 900] # 1 min, 5 min, 15 min
+
+            for attempt in range(max_retries):
+                try:
+                    if media_type == 'reel':
+                        fb_url = upload_reel(filepath, caption, title=seo.get('title'))
+                    else:
+                        fb_url = upload_photo(filepath, caption)
+                    fb_succeeded = True
+                    break
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        wait_time = retry_delays[attempt]
+                        logger.warning(f"Facebook upload attempt {attempt + 1} failed: {e}. Retrying in {wait_time}s...")
+                        time.sleep(wait_time)
+                    else:
+                        logger.error(f"Facebook upload failed after {max_retries} attempts: {e}. Continuing to YouTube...")
+        else:
+            logger.warning("Facebook health check failed earlier. Skipping Facebook upload, proceeding to YouTube.")
+
+        # YouTube Upload (always attempted for reels, regardless of Facebook outcome)
         yt_url = None
         if media_type == 'reel':
             try:
                 yt_url = upload_youtube_shorts(filepath, seo['title'], seo['description'], seo.get('hashtags', []))
             except Exception as e:
-                logger.error(f"YouTube Shorts upload failed, but Facebook succeeded: {e}")
+                logger.error(f"YouTube Shorts upload failed: {e}")
                 yt_url = f"Error: {e}"
 
         # Success Handling

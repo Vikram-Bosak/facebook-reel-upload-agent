@@ -109,15 +109,15 @@ def main():
     access_token = os.environ.get('FB_ACCESS_TOKEN')
     page_id = os.environ.get('FB_PAGE_ID')
     is_healthy, health_results = run_all_health_checks(access_token, page_id)
+    fb_healthy = is_healthy
     if not is_healthy:
-        logger.error(f"System health check failed. Aborting cycle. Results: {health_results}")
-        update_heartbeat("unhealthy", health_results)
+        logger.warning(f"Facebook health check failed. Continuing for YouTube. Results: {health_results}")
+        update_heartbeat("degraded", health_results)
         try:
             from telegram_reporter import report_failure
-            report_failure("System Health Check", f"Critical Health Check Failure:\n{health_results}", 0)
+            report_failure("System Health Check", f"Facebook Health Check Failure (non-blocking):\n{health_results}", 0)
         except Exception as tel_err:
             logger.error(f"Failed to send health failure notification: {tel_err}")
-        sys.exit(1)
 
     # Check if we have pending videos
     pending_reels = count_pending_media('reel')
@@ -180,7 +180,7 @@ def main():
     # Process the next media in the queue
     update_heartbeat("processing")
     try:
-        success = process_next_media(media_to_upload)
+        success = process_next_media(media_to_upload, fb_healthy=fb_healthy)
         if success:
             update_heartbeat("healthy", {"message": "Cycle completed successfully"})
         else:
